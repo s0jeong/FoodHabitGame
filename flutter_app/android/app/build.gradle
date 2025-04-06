@@ -1,0 +1,40 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin" // Flutter Gradle Plugin
+}
+
+android {
+    namespace = "com.example.flutter_app"
+    compileSdk = 34  // Use the latest compile SDK version (check for the latest stable version)
+    ndkVersion = "25.1.8937393"  // Ensure the NDK version matches the latest supported version
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17  // Use Java 17 or latest stable version
+        targetCompatibility = JavaVersion.VERSION_17
+        // // -Xlint:-options 경고 무시
+        // options.compilerArgs << "-Xlint:-options"
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"  // Align Kotlin JVM target with Java version
+    }
+
+    defaultConfig {
+        applicationId = "com.example.flutter_app"
+        minSdk = 21  // Ensure this is set to your desired minimum SDK version (e.g., 21 or above)
+        targetSdk = 34  // Use the latest target SDK version (check for latest stable)
+        versionCode = 1  // Update based on your versioning scheme
+        versionName = "1.0.0"  // Set version name as required
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.debug // Use your own signing config for release builds
+        }
+    }
+}
+
+flutter {
+    source = "../.."  // Ensure this points to the correct Flutter SDK source directory
+}
