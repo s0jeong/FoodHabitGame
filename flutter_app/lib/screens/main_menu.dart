@@ -16,14 +16,14 @@ class MainMenu extends StatefulWidget {
 class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
   late List<AnimationController> _controllers;
   late List<Animation<double>> _animations;
-  final double titleFontSize = 48; // FOOD HABIT GAME의 폰트 크기
-  final double startTextFontSize = 24; // Press ENTER to start의 폰트 크기
-  final double spacing = 40; // FOOD HABIT GAME과 Press ENTER to start 사이의 간격
+  final double titleFontSize = 48; // 냠냠쩝쩝팡팡의 폰트 크기
+  final double buttonFontSize = 24; // 게임 시작과 환경 설정의 폰트 크기
+  final double spacing = 35; // 냠냠쩝쩝팡팡과 버튼 사이의 간격
 
   @override
   void initState() {
     super.initState();
-    const String title = 'FOOD HABIT GAME';
+    const String title = '냠냠쩝쩝팡팡';
     // 각 글자에 대해 AnimationController와 Animation 생성
     _controllers = List.generate(
       title.length,
@@ -62,127 +62,150 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // Set the background color to a bright blue, similar to the image
-        color: const Color(0xFF5C94FC), // Blue background color
+        // 파스텔 핑크 배경 설정
+        color: const Color(0xFFFFD1DC),
         child: Stack(
           children: [
-            // Add some decorative elements like pipes and clouds
+            // 장식 요소: 하트와 별 추가
             Positioned(
               top: 50,
               left: 20,
-              child: _buildPipe(),
+              child: _buildHeart(),
             ),
             Positioned(
               top: 100,
               right: 30,
-              child: _buildPipe(),
+              child: _buildStar(),
             ),
             Positioned(
               top: 30,
               left: 100,
-              child: _buildCloud(),
+              child: _buildHeart(),
             ),
             Positioned(
               top: 60,
               right: 80,
-              child: _buildCloud(),
+              child: _buildStar(),
             ),
             // Center the main content
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Title: FOOD HABIT GAME with scale effect
+                  // Title: 냠냠쩝쩝팡팡 with scale effect
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: _buildTitleText(titleFontSize),
                   ),
                   // Spacing set to 35
                   SizedBox(height: spacing),
-                  // "Press ENTER to start" text, now tappable
-                  GestureDetector(
-                    onTap: () {
-                      final myGame = BattleGame();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => GameWidget(
-                            game: myGame,
-                            overlayBuilderMap: {
-                              'HeroSelection': (BuildContext context, BattleGame game) {
-                                return HeroSelectionOverlay(
-                                  onSelect: (selectedHero) {
-                                    game.gameWorld.addHeroById(selectedHero);
-                                    game.hideHeroSelectionOverlay();
+                  // "게임 시작"과 "환경 설정" 버튼
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 게임 시작 버튼
+                      GestureDetector(
+                        onTap: () {
+                          final myGame = BattleGame();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => GameWidget(
+                                game: myGame,
+                                overlayBuilderMap: {
+                                  'HeroSelection': (BuildContext context, BattleGame game) {
+                                    return HeroSelectionOverlay(
+                                      onSelect: (selectedHero) {
+                                        game.gameWorld.addHeroById(selectedHero);
+                                        game.hideHeroSelectionOverlay();
+                                      },
+                                    );
                                   },
-                                );
-                              },
-                              'eatCameraView': (BuildContext context, BattleGame game) {
-                                return EatDetectorView(
-                                  onFinished: () {
-                                    game.hideEatCameraOverlay();
+                                  'eatCameraView': (BuildContext context, BattleGame game) {
+                                    return EatDetectorView(
+                                      onFinished: () {
+                                        game.hideEatCameraOverlay();
+                                      },
+                                    );
                                   },
-                                );
-                              },
-                              'vegetableCameraView': (BuildContext context, BattleGame game) {
-                                return VegetableDetectorView(
-                                  onFinished: () {
-                                    game.hideVegetableCameraOverlay();
+                                  'vegetableCameraView': (BuildContext context, BattleGame game) {
+                                    return VegetableDetectorView(
+                                      onFinished: () {
+                                        game.hideVegetableCameraOverlay();
+                                      },
+                                    );
                                   },
-                                );
-                              },
-                            },
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFA1CC), // 파스텔 핑크 버튼
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.white,
+                                offset: Offset(2, 2),
+                                blurRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '게임 시작',
+                            style: GoogleFonts.jua(
+                              fontSize: buttonFontSize,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      );
-                    },
-                    child: RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Press ',
-                            style: GoogleFonts.pressStart2p(
-                              fontSize: startTextFontSize,
-                              color: Colors.white,
-                              shadows: const [
-                                Shadow(
-                                  color: Colors.black,
-                                  offset: Offset(2, 2),
-                                  blurRadius: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                          TextSpan(
-                            text: 'ENTER',
-                            style: GoogleFonts.pressStart2p(
-                              fontSize: startTextFontSize,
-                              color: const Color(0xFFFFE082), // Pastel yellow
-                              shadows: const [
-                                Shadow(
-                                  color: Colors.black,
-                                  offset: Offset(2, 2),
-                                  blurRadius: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                          TextSpan(
-                            text: ' to start',
-                            style: GoogleFonts.pressStart2p(
-                              fontSize: startTextFontSize,
-                              color: Colors.white,
-                              shadows: const [
-                                Shadow(
-                                  color: Colors.black,
-                                  offset: Offset(2, 2),
-                                  blurRadius: 2,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                       ),
-                    ),
+                      const SizedBox(width: 20), // 버튼 간 간격
+                      // 환경 설정 버튼
+                      GestureDetector(
+                        onTap: () {
+                          // 환경 설정 화면으로 이동 (미구현 상태로 가정)
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text(
+                                '환경 설정',
+                                style: GoogleFonts.jua(fontSize: 24),
+                              ),
+                              content: const Text('환경 설정 화면은 준비 중입니다.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('닫기'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE6E6FA), // 파스텔 퍼플 버튼
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.white,
+                                offset: Offset(2, 2),
+                                blurRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '환경 설정',
+                            style: GoogleFonts.jua(
+                              fontSize: buttonFontSize,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -193,25 +216,16 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
     );
   }
 
-  // Build the "FOOD HABIT GAME" title with colorful letters and scale effect
+  // Build the "냠냠쩝쩝팡팡" title with colorful letters and scale effect
   List<Widget> _buildTitleText(double fontSize) {
-    const String title = 'FOOD HABIT GAME';
+    const String title = '냠냠쩝쩝팡팡';
     const List<Color> colors = [
-      Colors.red, // F
-      Colors.green, // O
-      Colors.yellow, // O
-      Colors.blue, // D
-      Colors.white, //  
-      Colors.red, // H
-      Colors.green, // A
-      Colors.yellow, // B
-      Colors.blue, // I
-      Colors.red, // T
-      Colors.white, //  
-      Colors.green, // G
-      Colors.yellow, // A
-      Colors.blue, // M
-      Colors.red, // E
+      Color(0xFFFFA1CC), // 냠 (파스텔 핑크)
+      Color(0xFFE6E6FA), // 냠 (파스텔 퍼플)
+      Color(0xFFFFD700), // 쩝 (골드)
+      Color(0xFFFFA1CC), // 쩝 (파스텔 핑크)
+      Color(0xFFE6E6FA), // 팡 (파스텔 퍼플)
+      Color(0xFFFFD700), // 팡 (골드)
     ];
 
     List<Widget> textWidgets = [];
@@ -224,12 +238,12 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
               scale: _animations[i].value, // 스케일 값에 따라 크기 변경
               child: Text(
                 title[i],
-                style: GoogleFonts.pressStart2p(
+                style: GoogleFonts.jua(
                   fontSize: fontSize,
                   color: colors[i],
                   shadows: const [
                     Shadow(
-                      color: Colors.black,
+                      color: Colors.white, // 부드러운 흰색 그림자
                       offset: Offset(2, 2),
                       blurRadius: 2,
                     ),
@@ -244,31 +258,50 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
     return textWidgets;
   }
 
-  // Build a pipe widget (simplified as a rectangle for now)
-  Widget _buildPipe() {
+  // 하트 장식 추가
+  Widget _buildHeart() {
     return Container(
       width: 40,
-      height: 100,
-      decoration: BoxDecoration(
-        color: const Color(0xFF00C000), // Green pipe color
-        border: Border.all(color: Colors.black, width: 2),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(10),
-          topRight: Radius.circular(10),
-        ),
+      height: 40,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFA1CC), // 파스텔 핑크 하트
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.white,
+            offset: Offset(2, 2),
+            blurRadius: 2,
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.favorite,
+        color: Colors.white,
+        size: 24,
       ),
     );
   }
 
-  // Build a cloud widget (simplified as an oval)
-  Widget _buildCloud() {
+  // 별 장식 추가
+  Widget _buildStar() {
     return Container(
-      width: 60,
-      height: 30,
-      decoration: BoxDecoration(
+      width: 40,
+      height: 40,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFD700), // 골드 별
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.white,
+            offset: Offset(2, 2),
+            blurRadius: 2,
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.star,
         color: Colors.white,
-        border: Border.all(color: Colors.black, width: 2),
-        borderRadius: BorderRadius.circular(20),
+        size: 24,
       ),
     );
   }
