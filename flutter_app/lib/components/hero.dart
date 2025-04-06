@@ -38,7 +38,7 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
     sprite = spriteManager.getSpriteByHeroID(heroId);
     if (sprite != null) {
       size = Vector2(sprite!.src.width.toDouble(), sprite!.src.height.toDouble());
-      size = size * 0.4; // 크기 비율 조정
+      size = Vector2(170, 170); // 크기 비율 조정
     }
 
     // Hero가 어두운 배경 위에 보이도록 zIndex 설정
