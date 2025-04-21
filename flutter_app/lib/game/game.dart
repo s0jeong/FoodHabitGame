@@ -1,3 +1,4 @@
+// flutter_app/lib/game/game.dart
 import 'package:flame/game.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'world.dart';
@@ -87,32 +88,11 @@ class BattleGame extends FlameGame {
     overlays.add('vegetableCameraView'); // 'VegetableCamera' 오버레이 추가
     isGamePaused = true; // 게임 일시정지
   }
+
   void hideVegetableCameraOverlay() {
     overlays.remove('vegetableCameraView'); // 'VegetableCamera' 오버레이 제거
     gameWorld.spawnUltraProjectile();
+    gameWorld.removeVegetable(); // 채소 이미지 하나 제거
     isGamePaused = false; // 게임 재개
   }
-
-  // // 메시지 표시 메서드 추가
-  // void showBossMessage(String message, {Duration duration = const Duration(seconds: 3)}) {
-  //   final messageComponent = TextComponent(
-  //     text: message,
-  //     textRenderer: TextPaint(
-  //       style: TextStyle(
-  //         fontSize: 48.0,  // 크기를 좀 더 키워 강조
-  //         color: Color.fromARGB(255, 0, 0, 0),
-  //         fontWeight: FontWeight.bold,
-  //       ),
-  //     ),
-  //     anchor: Anchor.center,
-  //     position: size / 2, // 화면 중앙에 배치
-  //   );
-
-  //   add(messageComponent);
-
-  //   // 일정 시간 후 메시지 제거
-  //   Future.delayed(duration, () {
-  //     messageComponent.removeFromParent();
-  //   });
-  // }
 }

@@ -1,3 +1,4 @@
+// flutter_app/lib/game/world.dart
 import 'dart:math';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_app/components/hero.dart' as customhero;
 import 'package:flutter_app/components/ultra_projectile.dart';
 import 'package:flutter_app/game/game.dart';
 import 'package:flutter_app/game_ui/ui/gauge_bar.dart';
+import 'package:flutter_app/screens/preferences.dart'; // Preferences 임포트
 
 class GameWorld extends Component with HasGameRef<BattleGame> {
   List<customhero.Hero> heroes = [];
@@ -17,6 +19,10 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
 
   double heroEnergy = 100;
   final double maxHeroEnergy = 100;
+
+  // 채소 개수 및 UI 관리
+  int broccoliCount = 0;
+  List<SpriteComponent> vegetableSprites = []; // 채소 이미지를 관리할 리스트
 
   void useHeroEnergy(double amount) {
     if (heroEnergy <= 0) {
@@ -47,12 +53,16 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
   @override
   Future<void> onLoad() async {
     super.onLoad();
+    // Preferences에서 broccoliCount 가져오기
+    final prefs = await Preferences.getPreferences();
+    broccoliCount = prefs['broccoliCount']!;
+    
     spawnUI();
     spawnInitialHeroes();
     spawnEnemies();
   }
 
-  void spawnUI() {
+  void spawnUI() async {
     enemyHealthBar = GaugeBar(
       direction: GaugeDirection.rightToLeft,
       mainColor: Colors.red,
@@ -87,6 +97,46 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
     enemyHealthBar.setPosition(AlignType.right, gameRef.size.x);
     heroEnergyBar.setPosition(AlignType.left, gameRef.size.x);
     goldBar.setPosition(AlignType.center, gameRef.size.x);
+
+    // 채소 이미지 추가
+    await spawnVegetables();
+  }
+
+  Future<void> spawnVegetables() async {
+    // 기존 채소 이미지 제거 (중복 방지)
+    for (var sprite in vegetableSprites) {
+      remove(sprite);
+    }
+    vegetableSprites.clear();
+
+    // 채소 이미지를 게이지 바 아래로 배치
+    const double vegetableSize = 40; // 채소 이미지 크기
+    const double spacing = 5; // 채소 간 간격
+    const double gaugeBarBottomPadding = 10; // 게이지 바 아래 여유 공간
+    const double vegetablesStartXPadding = 20; // 화면 오른쪽에서 떨어진 간격
+
+    // 위치 계산
+    double startX = gameRef.size.x - broccoliCount * (vegetableSize + spacing) - vegetablesStartXPadding;
+    double yPos = 40 + 30 + gaugeBarBottomPadding; // 게이지 바의 y 위치 + 높이 + 여유 공간
+
+    for (int i = 0; i < broccoliCount; i++) {
+      final sprite = SpriteComponent(
+        sprite: await Sprite.load('heros/vegetable.png'),
+        size: Vector2(vegetableSize, vegetableSize),
+        position: Vector2(startX + i * (vegetableSize + spacing), yPos),
+      );
+      vegetableSprites.add(sprite);
+      add(sprite);
+    }
+  }
+
+  void removeVegetable() {
+    if (vegetableSprites.isNotEmpty) {
+      final sprite = vegetableSprites.last;
+      remove(sprite); // 즉시 제거
+      vegetableSprites.remove(sprite);
+      broccoliCount--; // 개수 감소
+    }
   }
 
   void spawnInitialHeroes() {
