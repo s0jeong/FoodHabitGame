@@ -6,7 +6,8 @@ import '../game/game.dart';
 import 'package:flutter_app/game_ui/eat_detector_view.dart';
 import 'package:flutter_app/game_ui/hero_selection_overlay.dart';
 import 'package:flutter_app/game_ui/vegetable_detector_view.dart';
-import 'package:flutter_app/screens/preferences.dart'; // preferences.dart 임포트
+import 'package:flutter_app/screens/preferences.dart';
+import 'package:flutter_app/screens/vegetable_count_screen.dart'; // VegetableCountScreen 임포트
 
 class MainMenu extends StatefulWidget {
   const MainMenu({super.key});
@@ -90,36 +91,10 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                     children: [
                       GestureDetector(
                         onTap: () {
-                          final myGame = BattleGame();
+                          // 게임 시작 버튼 클릭 시 VegetableCountScreen으로 이동
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => GameWidget(
-                                game: myGame,
-                                overlayBuilderMap: {
-                                  'HeroSelection': (BuildContext context, BattleGame game) {
-                                    return HeroSelectionOverlay(
-                                      onSelect: (selectedHero) {
-                                        game.gameWorld.addHeroById(selectedHero);
-                                        game.hideHeroSelectionOverlay();
-                                      },
-                                    );
-                                  },
-                                  'eatCameraView': (BuildContext context, BattleGame game) {
-                                    return EatDetectorView(
-                                      onFinished: () {
-                                        game.hideEatCameraOverlay();
-                                      },
-                                    );
-                                  },
-                                  'vegetableCameraView': (BuildContext context, BattleGame game) {
-                                    return VegetableDetectorView(
-                                      onFinished: () {
-                                        game.hideVegetableCameraOverlay();
-                                      },
-                                    );
-                                  },
-                                },
-                              ),
+                              builder: (context) => const VegetableCountScreen(),
                             ),
                           );
                         },
