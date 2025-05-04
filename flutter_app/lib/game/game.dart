@@ -1,6 +1,7 @@
 // flutter_app/lib/game/game.dart
 import 'package:flame/game.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/material.dart';
 import 'world.dart';
 import 'package:flutter_app/screens/sliding_background.dart';
 import 'package:flutter_app/components/enemyGroup.dart';
@@ -33,6 +34,13 @@ class BattleGame extends FlameGame {
     await audioPlayer.setSource(AssetSource('audio/stranger-things-124008.mp3')); // 오디오 파일 설정
     await audioPlayer.setReleaseMode(ReleaseMode.loop); // 반복 재생 설정
     audioPlayer.play(AssetSource('audio/stranger-things-124008.mp3'), volume: 0.5); // 재생
+
+    // 오버레이 빌더 등록
+    overlays.addEntry('PauseOverlay', (context, game) => PauseOverlay(game: this));
+    overlays.addEntry('PauseButton', (context, game) => PauseButton(game: this));
+
+    // PauseButton 오버레이 활성화
+    overlays.add('PauseButton');
   }
 
   @override
@@ -94,5 +102,89 @@ class BattleGame extends FlameGame {
     gameWorld.spawnUltraProjectile();
     gameWorld.removeVegetable(); // 채소 이미지 하나 제거
     isGamePaused = false; // 게임 재개
+  }
+
+  // 일시정지 오버레이 표시
+  void showPauseOverlay() {
+    overlays.add('PauseOverlay');
+    isGamePaused = true;
+  }
+
+  // 일시정지 오버레이 닫기
+  void hidePauseOverlay() {
+    overlays.remove('PauseOverlay');
+    isGamePaused = false;
+  }
+
+  // 게임 종료 및 MainMenu로 돌아가기
+  void exitGame(BuildContext context) {
+    onRemove();
+    // 스택의 첫 번째 화면(MainMenu)으로 이동
+    Navigator.popUntil(context, (route) => route.isFirst);
+  }
+}
+
+// 일시정지 버튼 오버레이
+class PauseButton extends StatelessWidget {
+  final BattleGame game;
+
+  const PauseButton({super.key, required this.game});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 10,
+      right: 10,
+      child: IconButton(
+        icon: const Icon(Icons.pause, size: 40, color: Colors.white),
+        onPressed: () {
+          game.showPauseOverlay();
+        },
+      ),
+    );
+  }
+}
+
+// 일시정지 오버레이
+class PauseOverlay extends StatelessWidget {
+  final BattleGame game;
+
+  const PauseOverlay({super.key, required this.game});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        color: Colors.black54,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '일시정지됨',
+              style: TextStyle(
+                fontSize: 32,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                game.hidePauseOverlay();
+              },
+              child: const Text('재개', style: TextStyle(fontSize: 20)),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () {
+                game.exitGame(context);
+              },
+              child: const Text('종료', style: TextStyle(fontSize: 20)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
