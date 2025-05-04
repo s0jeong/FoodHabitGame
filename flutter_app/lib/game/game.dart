@@ -1,5 +1,6 @@
 // flutter_app/lib/game/game.dart
 import 'package:flame/game.dart';
+import 'package:flame/components.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'world.dart';
@@ -15,9 +16,13 @@ class BattleGame extends FlameGame {
 
   bool isGamePaused = false; // 게임 일시정지 여부
   late SlidingBackground slidingBackground; // SlidingBackground 추가
-
   late AudioPlayer audioPlayer; // AudioPlayer 인스턴스
   late EnemyGroup enemyGroup;
+
+  // 타이머 관련 변수
+  late TimerComponent gameTimer;
+  int elapsedSeconds = 0; // 경과 시간(초)
+  late ValueNotifier<int> elapsedSecondsNotifier; // ValueNotifier 추가
 
   @override
   Future<void> onLoad() async {
@@ -35,12 +40,33 @@ class BattleGame extends FlameGame {
     await audioPlayer.setReleaseMode(ReleaseMode.loop); // 반복 재생 설정
     audioPlayer.play(AssetSource('audio/stranger-things-124008.mp3'), volume: 0.5); // 재생
 
+    // ValueNotifier 초기화
+    elapsedSecondsNotifier = ValueNotifier<int>(elapsedSeconds);
+
     // 오버레이 빌더 등록
     overlays.addEntry('PauseOverlay', (context, game) => PauseOverlay(game: this));
     overlays.addEntry('PauseButton', (context, game) => PauseButton(game: this));
+    overlays.addEntry('TimerOverlay', (context, game) => TimerOverlay(game: this));
 
     // PauseButton 오버레이 활성화
     overlays.add('PauseButton');
+    // TimerOverlay 오버레이 활성화
+    overlays.add('TimerOverlay');
+
+    // 타이머 컴포넌트 추가
+    gameTimer = TimerComponent(
+      period: 1.0, // 1초마다 업데이트
+      repeat: true,
+      onTick: () {
+        // vegetableCameraView가 활성화되어 있거나, 게임이 일시정지 상태가 아닐 때 타이머 증가
+        if (overlays.isActive('vegetableCameraView') || !isGamePaused) {
+          elapsedSeconds++; // 경과 시간 증가
+          elapsedSecondsNotifier.value = elapsedSeconds; // ValueNotifier 갱신
+          print('Elapsed Seconds: $elapsedSeconds'); // 디버깅 로그
+        }
+      },
+    );
+    add(gameTimer);
   }
 
   @override
@@ -122,6 +148,13 @@ class BattleGame extends FlameGame {
     // 스택의 첫 번째 화면(MainMenu)으로 이동
     Navigator.popUntil(context, (route) => route.isFirst);
   }
+
+  // 경과 시간을 분:초 형식으로 변환
+  String getFormattedTime() {
+    int minutes = elapsedSeconds ~/ 60;
+    int seconds = elapsedSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
 }
 
 // 일시정지 버튼 오버레이
@@ -184,6 +217,34 @@ class PauseOverlay extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// 실행 시간을 표시하는 오버레이
+class TimerOverlay extends StatelessWidget {
+  final BattleGame game;
+
+  const TimerOverlay({super.key, required this.game});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 10,
+      left: 10,
+      child: ValueListenableBuilder<int>(
+        valueListenable: game.elapsedSecondsNotifier, // ValueNotifier 사용
+        builder: (context, elapsedSeconds, child) {
+          return Text(
+            game.getFormattedTime(),
+            style: const TextStyle(
+              fontSize: 24,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          );
+        },
       ),
     );
   }
