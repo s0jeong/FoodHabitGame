@@ -3,6 +3,7 @@ import 'package:flame/game.dart';
 import 'package:flame/components.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart'; // 카메라 패키지 추가
 import 'world.dart';
 import 'package:flutter_app/screens/sliding_background.dart';
 import 'package:flutter_app/components/enemyGroup.dart';
@@ -24,6 +25,11 @@ class BattleGame extends FlameGame {
   int elapsedSeconds = 0; // 경과 시간(초)
   late ValueNotifier<int> elapsedSecondsNotifier; // ValueNotifier 추가
 
+  // 카메라 관련 변수
+  late CameraController cameraController;
+  late Future<void> cameraInitialized;
+  bool isCameraInitialized = false;
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();
@@ -43,15 +49,37 @@ class BattleGame extends FlameGame {
     // ValueNotifier 초기화
     elapsedSecondsNotifier = ValueNotifier<int>(elapsedSeconds);
 
+    // 카메라 초기화
+    final cameras = await availableCameras();
+    if (cameras.isNotEmpty) {
+      cameraController = CameraController(
+        cameras.firstWhere(
+          (camera) => camera.lensDirection == CameraLensDirection.front, // 전면 카메라 선택
+          orElse: () => cameras.first, // 전면 카메라가 없으면 첫 번째 카메라 사용
+        ),
+        ResolutionPreset.low, // 낮은 해상도로 설정하여 성능 최적화
+      );
+      cameraInitialized = cameraController.initialize().then((_) {
+        isCameraInitialized = true;
+      }).catchError((e) {
+        print('Camera initialization error: $e');
+      });
+    } else {
+      print('No cameras available');
+    }
+
     // 오버레이 빌더 등록
     overlays.addEntry('PauseOverlay', (context, game) => PauseOverlay(game: this));
     overlays.addEntry('PauseButton', (context, game) => PauseButton(game: this));
     overlays.addEntry('TimerOverlay', (context, game) => TimerOverlay(game: this));
+    overlays.addEntry('CameraOverlay', (context, game) => CameraOverlay(game: this));
 
     // PauseButton 오버레이 활성화
     overlays.add('PauseButton');
     // TimerOverlay 오버레이 활성화
     overlays.add('TimerOverlay');
+    // CameraOverlay 오버레이 활성화
+    overlays.add('CameraOverlay');
 
     // 타이머 컴포넌트 추가
     gameTimer = TimerComponent(
@@ -81,6 +109,10 @@ class BattleGame extends FlameGame {
 
   @override
   Future<void> onRemove() async {
+    // 카메라 리소스 해제
+    if (isCameraInitialized) {
+      await cameraController.dispose();
+    }
     // 게임 종료 시 배경음악 정지 및 해제
     await audioPlayer.stop();
     await audioPlayer.dispose();
@@ -234,7 +266,7 @@ class TimerOverlay extends StatelessWidget {
       top: 10,
       left: 10,
       child: ValueListenableBuilder<int>(
-        valueListenable: game.elapsedSecondsNotifier, // ValueNotifier 사용
+        valueListenable: game.elapsedSecondsNotifier,
         builder: (context, elapsedSeconds, child) {
           return Text(
             game.getFormattedTime(),
@@ -245,6 +277,47 @@ class TimerOverlay extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// 카메라 피드를 표시하는 오버레이
+class CameraOverlay extends StatelessWidget {
+  final BattleGame game;
+
+  const CameraOverlay({super.key, required this.game});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 80, // TimerOverlay 아래에 배치
+      left: 1,
+      child: SizedBox(
+        width: 200, // 작은 크기
+        height: 150,
+        child: FutureBuilder<void>(
+          future: game.cameraInitialized,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.done && game.isCameraInitialized) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(10), // 모서리 둥글게
+                child: CameraPreview(game.cameraController),
+              );
+            } else if (snapshot.hasError) {
+              return const Center(
+                child: Text(
+                  '카메라 오류',
+                  style: TextStyle(color: Colors.white),
+                ),
+              );
+            } else {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+          },
+        ),
       ),
     );
   }
