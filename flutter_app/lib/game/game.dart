@@ -16,6 +16,7 @@ class BattleGame extends FlameGame {
   int powerLevel = 0; // 파워게이지
 
   bool isGamePaused = false; // 게임 일시정지 여부
+  bool isGameEnded = false; // 게임 종료 여부
   late SlidingBackground slidingBackground; // SlidingBackground 추가
   late AudioPlayer audioPlayer; // AudioPlayer 인스턴스
   late EnemyGroup enemyGroup;
@@ -94,7 +95,7 @@ class BattleGame extends FlameGame {
       period: 1.0,
       repeat: true,
       onTick: () {
-        if (overlays.isActive('vegetableCameraView') || !isGamePaused) {
+        if (!isGameEnded && (overlays.isActive('vegetableCameraView') || !isGamePaused)) {
           elapsedSeconds++;
           elapsedSecondsNotifier.value = elapsedSeconds;
           print('Elapsed Seconds: $elapsedSeconds');
@@ -106,9 +107,11 @@ class BattleGame extends FlameGame {
 
   @override
   void update(double dt) {
-    super.update(dt);
-    if (!isGamePaused) {
-      gameWorld.update(dt);
+    if (!isGameEnded) { // 게임이 종료되면 업데이트 완전히 중지
+      super.update(dt);
+      if (!isGamePaused) {
+        gameWorld.update(dt);
+      }
     }
   }
 
@@ -167,6 +170,20 @@ class BattleGame extends FlameGame {
 
     // 목표 채소 개수에 도달했는지 확인
     if (eatenVegetableCount >= targetVegetableCount) {
+      // CameraOverlay를 제외한 모든 오버레이 제거
+      overlays.remove('PauseButton');
+      overlays.remove('TimerOverlay');
+      // 모든 컴포넌트 제거
+      remove(gameWorld);
+      remove(slidingBackground);
+      remove(gameTimer);
+      // 배경음악 중지
+      audioPlayer.stop();
+      // 게임 엔진 일시 중지
+      pauseEngine();
+      // 게임 종료 상태로 설정
+      isGameEnded = true;
+      // 게임 종료 오버레이 표시 (CameraOverlay는 유지됨)
       overlays.add('GameEndOverlay');
       isGamePaused = true; // 게임 일시정지
     } else {
@@ -326,7 +343,6 @@ class CameraOverlay extends StatelessWidget {
   }
 }
 
-// 게임 종료 시 표시할 오버레이
 class GameEndOverlay extends StatelessWidget {
   final BattleGame game;
 
@@ -338,42 +354,51 @@ class GameEndOverlay extends StatelessWidget {
     final now = DateTime.now();
     final formattedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        color: Colors.black87,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '게임 종료!',
-              style: TextStyle(
-                fontSize: 32,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black87.withOpacity(0.5), // 반투명 배경
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.8),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '게임 종료!',
+                style: TextStyle(
+                  fontSize: 32,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  shadows: [Shadow(color: Colors.black, blurRadius: 2, offset: Offset(1, 1))],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              '날짜: $formattedDate',
-              style: const TextStyle(fontSize: 20, color: Colors.white),
-            ),
-            Text(
-              '플레이 시간: ${game.getFormattedTime()}',
-              style: const TextStyle(fontSize: 20, color: Colors.white),
-            ),
-            Text(
-              '먹은 채소 개수: ${game.eatenVegetableCount}개',
-              style: const TextStyle(fontSize: 20, color: Colors.white),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                game.exitGame(context);
-              },
-              child: const Text('메인 화면으로로', style: TextStyle(fontSize: 20)),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Text(
+                '날짜: $formattedDate',
+                style: const TextStyle(fontSize: 20, color: Colors.white),
+              ),
+              Text(
+                '플레이 시간: ${game.getFormattedTime()}',
+                style: const TextStyle(fontSize: 20, color: Colors.white),
+              ),
+              Text(
+                '먹은 채소 개수: ${game.eatenVegetableCount}개',
+                style: const TextStyle(fontSize: 20, color: Colors.white),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  game.exitGame(context);
+                },
+                child: const Text('메인 화면으로', style: TextStyle(fontSize: 20)),
+              ),
+            ],
+          ),
         ),
       ),
     );
