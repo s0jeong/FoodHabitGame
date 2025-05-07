@@ -3,7 +3,7 @@ import 'package:flame/game.dart';
 import 'package:flame/components.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:camera/camera.dart'; // 카메라 패키지 추가
+import 'package:camera/camera.dart';
 import 'world.dart';
 import 'package:flutter_app/screens/sliding_background.dart';
 import 'package:flutter_app/components/enemyGroup.dart';
@@ -30,6 +30,13 @@ class BattleGame extends FlameGame {
   late Future<void> cameraInitialized;
   bool isCameraInitialized = false;
 
+  // 채소 관련 변수
+  final int targetVegetableCount; // 오늘 먹어야 할 채소 개수
+  int eatenVegetableCount = 0; // 먹은 채소 개수
+
+  // 생성자에서 targetVegetableCount를 받아옴
+  BattleGame({required this.targetVegetableCount});
+
   @override
   Future<void> onLoad() async {
     await super.onLoad();
@@ -54,10 +61,10 @@ class BattleGame extends FlameGame {
     if (cameras.isNotEmpty) {
       cameraController = CameraController(
         cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.front, // 전면 카메라 선택
-          orElse: () => cameras.first, // 전면 카메라가 없으면 첫 번째 카메라 사용
+          (camera) => camera.lensDirection == CameraLensDirection.front,
+          orElse: () => cameras.first,
         ),
-        ResolutionPreset.low, // 낮은 해상도로 설정하여 성능 최적화
+        ResolutionPreset.low,
       );
       cameraInitialized = cameraController.initialize().then((_) {
         isCameraInitialized = true;
@@ -73,6 +80,7 @@ class BattleGame extends FlameGame {
     overlays.addEntry('PauseButton', (context, game) => PauseButton(game: this));
     overlays.addEntry('TimerOverlay', (context, game) => TimerOverlay(game: this));
     overlays.addEntry('CameraOverlay', (context, game) => CameraOverlay(game: this));
+    overlays.addEntry('GameEndOverlay', (context, game) => GameEndOverlay(game: this));
 
     // PauseButton 오버레이 활성화
     overlays.add('PauseButton');
@@ -83,14 +91,13 @@ class BattleGame extends FlameGame {
 
     // 타이머 컴포넌트 추가
     gameTimer = TimerComponent(
-      period: 1.0, // 1초마다 업데이트
+      period: 1.0,
       repeat: true,
       onTick: () {
-        // vegetableCameraView가 활성화되어 있거나, 게임이 일시정지 상태가 아닐 때 타이머 증가
         if (overlays.isActive('vegetableCameraView') || !isGamePaused) {
-          elapsedSeconds++; // 경과 시간 증가
-          elapsedSecondsNotifier.value = elapsedSeconds; // ValueNotifier 갱신
-          print('Elapsed Seconds: $elapsedSeconds'); // 디버깅 로그
+          elapsedSeconds++;
+          elapsedSecondsNotifier.value = elapsedSeconds;
+          print('Elapsed Seconds: $elapsedSeconds');
         }
       },
     );
@@ -100,88 +107,88 @@ class BattleGame extends FlameGame {
   @override
   void update(double dt) {
     super.update(dt);
-    
-    // 게임이 일시 정지 상태가 아닐 때만 게임 월드 업데이트
     if (!isGamePaused) {
-      gameWorld.update(dt); // 게임 월드 업데이트
+      gameWorld.update(dt);
     }
   }
 
   @override
   Future<void> onRemove() async {
-    // 카메라 리소스 해제
     if (isCameraInitialized) {
       await cameraController.dispose();
     }
-    // 게임 종료 시 배경음악 정지 및 해제
     await audioPlayer.stop();
     await audioPlayer.dispose();
     super.onRemove();
   }
 
   void showHeroSelectionOverlay() {
-    overlays.add('HeroSelection'); // 'HeroSelection' 오버레이 추가
-    isGamePaused = true; // 게임 일시정지
+    overlays.add('HeroSelection');
+    isGamePaused = true;
   }
 
   void hideHeroSelectionOverlay() {
-    overlays.remove('HeroSelection'); // 'HeroSelection' 오버레이 제거
-    isGamePaused = false; // 게임 재개
+    overlays.remove('HeroSelection');
+    isGamePaused = false;
   }
 
   void showEatCameraOverlay() {
-    overlays.add('eatCameraView'); // 'EatCamera' 오버레이 추가
-    isGamePaused = true; // 게임 일시정지
+    overlays.add('eatCameraView');
+    isGamePaused = true;
   }
 
   void hideEatCameraOverlay() {
-    overlays.remove('eatCameraView'); // 'EatCamera' 오버레이 제거
-    gameWorld.heroEnergy = gameWorld.maxHeroEnergy; // 히어로 에너지 풀충전
+    overlays.remove('eatCameraView');
+    gameWorld.heroEnergy = gameWorld.maxHeroEnergy;
 
-    // 히어로에 FlameEffect 파티클 효과 추가
     if (gameWorld.heroes.isNotEmpty) {
-      // 에너지 바 위치를 기준으로 FlameEffect 생성
-      final heroEnergyBarPosition = gameWorld.heroEnergyBar.position; // 에너지 바 위치
-      final flameEffectPosition = heroEnergyBarPosition + Vector2(200, 0); // x 좌표를 200픽셀 오른쪽으로 이동
+      final heroEnergyBarPosition = gameWorld.heroEnergyBar.position;
+      final flameEffectPosition = heroEnergyBarPosition + Vector2(200, 0);
       final flameEffect = FlameEffect(position: flameEffectPosition);
       add(flameEffect);
     }
 
-    isGamePaused = false; // 게임 재개
+    isGamePaused = false;
   }
 
   void showVegetableCameraOverlay() {
-    overlays.add('vegetableCameraView'); // 'VegetableCamera' 오버레이 추가
-    isGamePaused = true; // 게임 일시정지
+    overlays.add('vegetableCameraView');
+    isGamePaused = true;
   }
 
   void hideVegetableCameraOverlay() {
-    overlays.remove('vegetableCameraView'); // 'VegetableCamera' 오버레이 제거
+    overlays.remove('vegetableCameraView');
     gameWorld.spawnUltraProjectile();
-    gameWorld.removeVegetable(); // 채소 이미지 하나 제거
-    isGamePaused = false; // 게임 재개
+    gameWorld.removeVegetable();
+
+    // 먹은 채소 개수 증가
+    eatenVegetableCount++;
+    print('Eaten Vegetables: $eatenVegetableCount / $targetVegetableCount');
+
+    // 목표 채소 개수에 도달했는지 확인
+    if (eatenVegetableCount >= targetVegetableCount) {
+      overlays.add('GameEndOverlay');
+      isGamePaused = true; // 게임 일시정지
+    } else {
+      isGamePaused = false; // 게임 재개
+    }
   }
 
-  // 일시정지 오버레이 표시
   void showPauseOverlay() {
     overlays.add('PauseOverlay');
     isGamePaused = true;
   }
 
-  // 일시정지 오버레이 닫기
   void hidePauseOverlay() {
     overlays.remove('PauseOverlay');
     isGamePaused = false;
   }
 
-  // 게임 종료 및 MainMenu로 돌아가기
   void exitGame(BuildContext context) {
     onRemove();
-    // 스택의 첫 번째 화면(MainMenu)으로 이동
     Navigator.popUntil(context, (route) => route.isFirst);
   }
 
-  // 경과 시간을 분:초 형식으로 변환
   String getFormattedTime() {
     int minutes = elapsedSeconds ~/ 60;
     int seconds = elapsedSeconds % 60;
@@ -189,7 +196,6 @@ class BattleGame extends FlameGame {
   }
 }
 
-// 일시정지 버튼 오버레이
 class PauseButton extends StatelessWidget {
   final BattleGame game;
 
@@ -210,7 +216,6 @@ class PauseButton extends StatelessWidget {
   }
 }
 
-// 일시정지 오버레이
 class PauseOverlay extends StatelessWidget {
   final BattleGame game;
 
@@ -254,7 +259,6 @@ class PauseOverlay extends StatelessWidget {
   }
 }
 
-// 실행 시간을 표시하는 오버레이
 class TimerOverlay extends StatelessWidget {
   final BattleGame game;
 
@@ -282,7 +286,6 @@ class TimerOverlay extends StatelessWidget {
   }
 }
 
-// 카메라 피드를 표시하는 오버레이
 class CameraOverlay extends StatelessWidget {
   final BattleGame game;
 
@@ -291,17 +294,17 @@ class CameraOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: 80, // TimerOverlay 아래에 배치
+      top: 80,
       left: 1,
       child: SizedBox(
-        width: 200, // 작은 크기
+        width: 200,
         height: 150,
         child: FutureBuilder<void>(
           future: game.cameraInitialized,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.done && game.isCameraInitialized) {
               return ClipRRect(
-                borderRadius: BorderRadius.circular(10), // 모서리 둥글게
+                borderRadius: BorderRadius.circular(10),
                 child: CameraPreview(game.cameraController),
               );
             } else if (snapshot.hasError) {
@@ -317,6 +320,60 @@ class CameraOverlay extends StatelessWidget {
               );
             }
           },
+        ),
+      ),
+    );
+  }
+}
+
+// 게임 종료 시 표시할 오버레이
+class GameEndOverlay extends StatelessWidget {
+  final BattleGame game;
+
+  const GameEndOverlay({super.key, required this.game});
+
+  @override
+  Widget build(BuildContext context) {
+    // 현재 날짜 가져오기
+    final now = DateTime.now();
+    final formattedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        color: Colors.black87,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '게임 종료!',
+              style: TextStyle(
+                fontSize: 32,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '날짜: $formattedDate',
+              style: const TextStyle(fontSize: 20, color: Colors.white),
+            ),
+            Text(
+              '플레이 시간: ${game.getFormattedTime()}',
+              style: const TextStyle(fontSize: 20, color: Colors.white),
+            ),
+            Text(
+              '먹은 채소 개수: ${game.eatenVegetableCount}개',
+              style: const TextStyle(fontSize: 20, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                game.exitGame(context);
+              },
+              child: const Text('메인 화면으로로', style: TextStyle(fontSize: 20)),
+            ),
+          ],
         ),
       ),
     );

@@ -74,7 +74,8 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
       body: GestureDetector(
         onTap: () {
           // 화면 터치 시 캐릭터 선택 창으로 이동
-          final myGame = BattleGame();
+          // BattleGame 생성 시 broccoliCount를 targetVegetableCount로 전달
+          final myGame = BattleGame(targetVegetableCount: broccoliCount);
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => GameWidget(
@@ -151,7 +152,7 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
                   size: 50,
                   color: Colors.black,
                 ).animate().shimmer(duration: 1.5.seconds).scale(
-                      begin: const Offset(0.9, 0.9), // X, Y 방향 모두 0.9배
+                      begin: const Offset(0.9, 0.9),
                       end: const Offset(1.1, 1.1),
                       duration: const Duration(seconds: 1),
                       curve: Curves.easeInOut,
