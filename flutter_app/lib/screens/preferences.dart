@@ -6,7 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Preferences {
   // 나이에 따른 하루 야채 섭취량 계산 (g 단위)
   static int calculateVegetableIntake(int age) {
-    if (age <= 2) return 100; // 만 1~2세: 100g
+    if (age == 1) return 36; // 만 1세: 36g (브로콜리 2개, 18g * 2)
+    if (age == 2) return 100; // 만 2세: 100g
     if (age <= 5) return 150; // 만 3~5세: 150g
     if (age <= 9) return 200; // 만 6~9세: 200g
     return 250; // 만 10세 이상: 250g
@@ -25,8 +26,8 @@ class Preferences {
     int? dailyVegetableIntake = prefs.getInt('dailyVegetableIntake');
     
     if (childAge == null || dailyVegetableIntake == null) {
-      childAge = 3; // 기본값 만 1세
-      dailyVegetableIntake = 150; // 기본값 150g
+      childAge = 1; // 기본값 만 1세로 설정 (테스트 용이성)
+      dailyVegetableIntake = calculateVegetableIntake(childAge);
       await prefs.setInt('childAge', childAge);
       await prefs.setInt('dailyVegetableIntake', dailyVegetableIntake);
     }
