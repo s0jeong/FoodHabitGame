@@ -19,8 +19,8 @@ class MainMenu extends StatefulWidget {
 class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
   late AnimationController _hachupingController;
   late Animation<double> _hachupingAnimation;
-  AnimationController? _gameStartButtonController; // 게임 시작 버튼 애니메이션
-  AnimationController? _settingsButtonController; // 환경 설정 버튼 애니메이션
+  late AnimationController _gameStartButtonController; // late로 변경, null 제거
+  late AnimationController _settingsButtonController; // late로 변경, null 제거
   final double titleFontSize = 40;
   final double buttonFontSize = 24;
   final double spacing = 20;
@@ -40,13 +40,24 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
         curve: Curves.easeInOut,
       ),
     );
+
+    // 버튼 컨트롤러 초기화
+    _gameStartButtonController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    _settingsButtonController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
   }
 
   @override
   void dispose() {
     _hachupingController.dispose();
-    _gameStartButtonController?.dispose();
-    _settingsButtonController?.dispose();
+    _gameStartButtonController.dispose(); // 명시적 dispose
+    _settingsButtonController.dispose(); // 명시적 dispose
     super.dispose();
   }
 
@@ -54,12 +65,12 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFFCE4EC), Color(0xFFE1BEE7)], // 파스텔 핑크-보라 그라디언트
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+        decoration: BoxDecoration(
+          image: const DecorationImage(
+            image: AssetImage('assets/images/screen/start_bg.png'),
+            fit: BoxFit.cover,
           ),
+          color: Colors.black.withOpacity(0.3), // 반투명 오버레이
         ),
         child: Stack(
           children: [
@@ -68,17 +79,6 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
             Positioned(top: 100, right: 30, child: _buildHeart()),
             Positioned(bottom: 50, left: 80, child: _buildStar()),
             Positioned(bottom: 30, right: 60, child: _buildHeart()),
-            // 하단 잔디 장식
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Image.asset(
-                'assets/images/screen/grass.png', // 잔디 이미지 (pubspec.yaml에 추가 필요)
-                fit: BoxFit.cover,
-                height: 50,
-              ),
-            ),
             // 메인 콘텐츠
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -90,13 +90,26 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                     child: AnimatedBuilder(
                       animation: _hachupingAnimation,
                       builder: (context, child) {
-                        return Transform.scale(
-                          scale: _hachupingAnimation.value,
-                          child: Image.asset(
-                            'assets/images/screen/Heartsping.png', // 하츄핑 이미지
-                            width: 200,
-                            height: 200,
-                          ).animate().shimmer(duration: 2.seconds),
+                        return Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black54,
+                                offset: Offset(2, 2),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: Transform.scale(
+                            scale: _hachupingAnimation.value,
+                            child: Image.asset(
+                              'assets/images/screen/Heartsping.png',
+                              width: 400,
+                              height: 400,
+                            ).animate().shimmer(duration: 2.seconds),
+                          ),
                         );
                       },
                     ),
@@ -105,40 +118,55 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                 // 오른쪽 제목과 버튼
                 Expanded(
                   flex: 1,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // 세로로 배치된 제목
-                      _buildTitleText(),
-                      SizedBox(height: spacing),
-                      // 버튼들
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildButton(
-                            text: '게임 시작',
-                            colors: [Color(0xFFFFA1CC), Color(0xFFFFC1CC)],
-                            controller: _gameStartButtonController,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => const VegetableCountScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                          SizedBox(width: 20),
-                          _buildButton(
-                            text: '환경 설정',
-                            colors: [Color(0xFFE6E6FA), Color(0xFFB3E5FC)],
-                            controller: _settingsButtonController,
-                            onTap: () {
-                              Preferences.showSettingsDialog(context);
-                            },
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            offset: Offset(0, 4),
+                            blurRadius: 8,
                           ),
                         ],
                       ),
-                    ],
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildTitleText(),
+                          SizedBox(height: spacing),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _buildButton(
+                                text: '게임 시작',
+                                colors: [Color(0xFFFFA1CC), Color(0xFFFFC1CC)],
+                                controller: _gameStartButtonController,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => const VegetableCountScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              SizedBox(width: 20),
+                              _buildButton(
+                                text: '환경 설정',
+                                colors: [Color(0xFFE6E6FA), Color(0xFFB3E5FC)],
+                                controller: _settingsButtonController,
+                                onTap: () {
+                                  Preferences.showSettingsDialog(context);
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -167,13 +195,13 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
             shadows: const [
               Shadow(
                 color: Colors.white,
-                offset: Offset(2, 2),
-                blurRadius: 4,
+                offset: Offset(3, 3),
+                blurRadius: 6,
               ),
               Shadow(
                 color: Colors.black54,
-                offset: Offset(-1, -1),
-                blurRadius: 2,
+                offset: Offset(-2, -2),
+                blurRadius: 4,
               ),
             ],
           ),
@@ -186,36 +214,27 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
     required String text,
     required List<Color> colors,
     required VoidCallback onTap,
-    AnimationController? controller,
+    required AnimationController controller, // null 허용 제거
   }) {
     return GestureDetector(
       onTapDown: (_) {
-        // 버튼 클릭 시 즉시 약간 확대
-        controller ??= AnimationController(
-          duration: const Duration(milliseconds: 200),
-          vsync: this,
-        )..forward();
+        controller.forward();
       },
       onTapUp: (_) {
-        // 버튼 뗄 때 원래 크기로
-        controller?.reverse();
+        controller.reverse();
         onTap();
       },
       onTapCancel: () {
-        // 취소 시 원래 크기로
-        controller?.reverse();
+        controller.reverse();
       },
       child: Stack(
         alignment: Alignment.center,
         children: [
           AnimatedBuilder(
-            animation: controller ??= AnimationController(
-              duration: const Duration(milliseconds: 200),
-              vsync: this,
-            ),
+            animation: controller,
             builder: (context, child) {
               return Transform.scale(
-                scale: controller!.isAnimating ? 1.05 : 1.0, // 애니메이션 진행 중 1.05배
+                scale: controller.isAnimating ? 1.05 : 1.0,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                   decoration: BoxDecoration(
