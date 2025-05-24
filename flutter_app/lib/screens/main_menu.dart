@@ -19,16 +19,15 @@ class MainMenu extends StatefulWidget {
 class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
   late AnimationController _hachupingController;
   late Animation<double> _hachupingAnimation;
-  late AnimationController _gameStartButtonController; // late로 변경, null 제거
-  late AnimationController _settingsButtonController; // late로 변경, null 제거
-  final double titleFontSize = 40;
+  late AnimationController _gameStartButtonController;
+  late AnimationController _settingsButtonController;
+  final double titleFontSize = 48;
   final double buttonFontSize = 24;
   final double spacing = 20;
 
   @override
   void initState() {
     super.initState();
-    // 하츄핑 캐릭터 애니메이션 컨트롤러
     _hachupingController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -41,7 +40,6 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
       ),
     );
 
-    // 버튼 컨트롤러 초기화
     _gameStartButtonController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
@@ -56,8 +54,8 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
   @override
   void dispose() {
     _hachupingController.dispose();
-    _gameStartButtonController.dispose(); // 명시적 dispose
-    _settingsButtonController.dispose(); // 명시적 dispose
+    _gameStartButtonController.dispose();
+    _settingsButtonController.dispose();
     super.dispose();
   }
 
@@ -70,101 +68,112 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
             image: AssetImage('assets/images/screen/start_bg.png'),
             fit: BoxFit.cover,
           ),
-          color: Colors.black.withOpacity(0.3), // 반투명 오버레이
+          color: Colors.black.withOpacity(0.3),
         ),
         child: Stack(
           children: [
-            // 배경에 반짝이는 별과 하트
             Positioned(top: 50, left: 20, child: _buildStar()),
             Positioned(top: 100, right: 30, child: _buildHeart()),
             Positioned(bottom: 50, left: 80, child: _buildStar()),
             Positioned(bottom: 30, right: 60, child: _buildHeart()),
-            // 메인 콘텐츠
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 왼쪽 하츄핑 캐릭터
                 Expanded(
                   flex: 1,
                   child: Center(
                     child: AnimatedBuilder(
                       animation: _hachupingAnimation,
                       builder: (context, child) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black54,
-                                offset: Offset(2, 2),
-                                blurRadius: 6,
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const VegetableCountScreen(),
                               ),
-                            ],
-                          ),
-                          child: Transform.scale(
-                            scale: _hachupingAnimation.value,
-                            child: Image.asset(
-                              'assets/images/screen/Heartsping.png',
-                              width: 400,
-                              height: 400,
-                            ).animate().shimmer(duration: 2.seconds),
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black54,
+                                  offset: Offset(2, 2),
+                                  blurRadius: 6,
+                                ),
+                              ],
+                            ),
+                            child: Transform.scale(
+                              scale: _hachupingAnimation.value,
+                              child: Image.asset(
+                                'assets/images/screen/Heartsping.png',
+                                width: 400,
+                                height: 400,
+                              ).animate().shimmer(duration: 2.seconds),
+                            ),
                           ),
                         );
                       },
                     ),
                   ),
                 ),
-                // 오른쪽 제목과 버튼
                 Expanded(
                   flex: 1,
                   child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black26,
-                            offset: Offset(0, 4),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildTitleText(),
-                          SizedBox(height: spacing),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _buildButton(
-                                text: '게임 시작',
-                                colors: [Color(0xFFFFA1CC), Color(0xFFFFC1CC)],
-                                controller: _gameStartButtonController,
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => const VegetableCountScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              SizedBox(width: 20),
-                              _buildButton(
-                                text: '환경 설정',
-                                colors: [Color(0xFFE6E6FA), Color(0xFFB3E5FC)],
-                                controller: _settingsButtonController,
-                                onTap: () {
-                                  Preferences.showSettingsDialog(context);
-                                },
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 100.0), // 왼쪽으로 이동 (오른쪽 여백 추가)
+                      child: ClipPath(
+                        clipper: SpeechBubbleClipper(),
+                        child: Container(
+                          width: 700, // 말풍선 너비 증가 (기존 암묵적 크기보다 큼)
+                          padding: const EdgeInsets.fromLTRB(50, 30, 30, 30), // 패딩 증가
+                          decoration: const BoxDecoration(
+                            color: Colors.transparent,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black54,
+                                offset: Offset(0, 4),
+                                blurRadius: 8,
                               ),
                             ],
                           ),
-                        ],
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _buildTitleText(),
+                              SizedBox(height: spacing),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _buildButton(
+                                    text: '게임 시작',
+                                    colors: [Color(0xFFFFA1CC), Color(0xFFFFC1CC)],
+                                    controller: _gameStartButtonController,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => const VegetableCountScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  SizedBox(width: 20),
+                                  _buildButton(
+                                    text: '환경 설정',
+                                    colors: [Color(0xFFE6E6FA), Color(0xFFB3E5FC)],
+                                    controller: _settingsButtonController,
+                                    onTap: () {
+                                      Preferences.showSettingsDialog(context);
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -180,32 +189,51 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
   Widget _buildTitleText() {
     const List<String> titleLines = ['냠냠', '쩝쩝', '팡팡'];
     const List<Color> colors = [
-      Color(0xFFFFA1CC), // 핑크
-      Color(0xFFE6E6FA), // 라벤더
-      Color(0xFFFFC1CC), // 연한 핑크
+      Color(0xFFFFA1CC),
+      Color(0xFFE6E6FA),
+      Color(0xFFFFC1CC),
     ];
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: List.generate(3, (index) {
-        return Text(
-          titleLines[index],
-          style: GoogleFonts.jua(
-            fontSize: titleFontSize,
-            color: colors[index],
-            shadows: const [
-              Shadow(
-                color: Colors.white,
-                offset: Offset(3, 3),
-                blurRadius: 6,
+        // 각 글씨의 위치와 회전 각도 설정
+        final alignment = [
+          Alignment(-0.3, 0), // 냠냠: 왼쪽 쯤
+          Alignment(0.3, 0),  // 쩝쩝: 오른쪽 쯤
+          Alignment.center,   // 팡팡: 중앙
+        ][index];
+        final rotationAngle = [
+          -10 * (3.14159 / 180), // 냠냠: 왼쪽으로 10도 기울임
+          10 * (3.14159 / 180),  // 쩝쩝: 오른쪽으로 10도 기울임
+          0.0,                   // 팡팡: 기울임 없음
+        ][index];
+
+        return Align(
+          alignment: alignment,
+          child: Transform.rotate(
+            angle: rotationAngle,
+            child: Text(
+              titleLines[index],
+              style: GoogleFonts.jua(
+                fontSize: 80,
+                color: colors[index],
+                shadows: const [
+                  Shadow(
+                    color: Colors.white,
+                    offset: Offset(5, 5),
+                    blurRadius: 10,
+                  ),
+                  Shadow(
+                    color: Colors.black54,
+                    offset: Offset(-4, -4),
+                    blurRadius: 8,
+                  ),
+                ],
               ),
-              Shadow(
-                color: Colors.black54,
-                offset: Offset(-2, -2),
-                blurRadius: 4,
-              ),
-            ],
+            ).animate().fadeIn(duration: 1.seconds, delay: (index * 0.2).seconds).shimmer(),
           ),
-        ).animate().fadeIn(duration: 1.seconds, delay: (index * 0.2).seconds).shimmer();
+        );
       }),
     );
   }
@@ -214,7 +242,7 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
     required String text,
     required List<Color> colors,
     required VoidCallback onTap,
-    required AnimationController controller, // null 허용 제거
+    required AnimationController controller,
   }) {
     return GestureDetector(
       onTapDown: (_) {
@@ -256,7 +284,7 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                     text,
                     style: GoogleFonts.jua(
                       fontSize: buttonFontSize,
-                      color: Colors.white,
+                      color: Colors.black, // 글씨 색상 흰색 -> 검은색
                       shadows: const [
                         Shadow(
                           color: Colors.black54,
@@ -349,4 +377,32 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
       ),
     ).animate().shimmer(duration: 2.seconds);
   }
+}
+
+class SpeechBubbleClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    final cornerRadius = 20.0;
+    final tailHeight = 20.0;
+    final tailWidth = 40.0; // 꼬리 너비 증가
+
+    path.addRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(tailWidth, 0, size.width - tailWidth, size.height),
+        Radius.circular(cornerRadius),
+      ),
+    );
+
+    final tailStartY = size.height / 2 - tailHeight / 2;
+    path.moveTo(tailWidth, tailStartY);
+    path.lineTo(0, size.height / 2);
+    path.lineTo(tailWidth, tailStartY + tailHeight);
+    path.close();
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
