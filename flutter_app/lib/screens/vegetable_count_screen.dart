@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/screens/preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flame/game.dart';
 import 'package:flutter_app/game/game.dart';
 import 'package:flutter_app/game_ui/hero_selection_overlay.dart';
@@ -25,10 +26,31 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
   }
 
   Future<void> _loadPreferences() async {
-    final prefs = await Preferences.getPreferences();
-    setState(() {
-      broccoliCount = prefs['broccoliCount']!;
-    });
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (doc.exists) {
+        setState(() {
+          broccoliCount = doc.data()!['broccoliCount'] ?? 0;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateBroccoliCount(int newCount) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({'broccoliCount': newCount});
+      setState(() {
+        broccoliCount = newCount;
+      });
+    }
   }
 
   // 제목 텍스트 스타일
@@ -170,6 +192,24 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
                         ],
                       ),
                     ),
+                    SizedBox(height: 20),
+                    // 채소 개수 선택 드롭다운
+                    DropdownButton<int>(
+                      value: broccoliCount,
+                      items: List.generate(6, (index) => index).map((count) {
+                        return DropdownMenuItem<int>(
+                          value: count,
+                          child: Text('$count 개', style: GoogleFonts.jua(fontSize: 24)),
+                        );
+                      }).toList(),
+                      onChanged: (newCount) {
+                        if (newCount != null) {
+                          _updateBroccoliCount(newCount);
+                        }
+                      },
+                      dropdownColor: Color(0xFFFFC1CC),
+                      style: GoogleFonts.jua(color: Colors.black),
+                    ).animate().fadeIn(duration: 0.5.seconds),
                     SizedBox(height: 30),
                     // 터치 안내
                     Text(

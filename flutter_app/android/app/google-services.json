@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "992849343080",
+    "project_id": "foodhabitgame",
+    "storage_bucket": "foodhabitgame.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:992849343080:android:ee7016fa902b15891201dd",
+        "android_client_info": {
+          "package_name": "com.example.flutter_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0YiggZNI13YI1dKNE8Rvq-GlMBQaQSmI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flame/game.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../game/game.dart';
-import 'package:flutter_app/game_ui/eat_detector_view.dart';
-import 'package:flutter_app/game_ui/hero_selection_overlay.dart';
-import 'package:flutter_app/game_ui/vegetable_detector_view.dart';
 import 'package:flutter_app/screens/preferences.dart';
 import 'package:flutter_app/screens/vegetable_count_screen.dart';
 
