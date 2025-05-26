@@ -156,12 +156,15 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                                     },
                                   ),
                                   SizedBox(width: 20),
+                                  // main_menu.dart (수정 부분)
                                   _buildButton(
                                     text: '환경 설정',
                                     colors: [Color(0xFFE6E6FA), Color(0xFFB3E5FC)],
                                     controller: _settingsButtonController,
-                                    onTap: () {
-                                      Preferences.showSettingsDialog(context);
+                                    onTap: () async {
+                                      print('환경 설정 버튼 클릭');
+                                      await Preferences.showSettingsDialog(context);
+                                      print('환경 설정 다이얼로그 닫힘');
                                     },
                                   ),
                                 ],

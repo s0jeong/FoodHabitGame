@@ -8,89 +8,61 @@ import 'world.dart';
 import 'package:flutter_app/screens/sliding_background.dart';
 import 'package:flutter_app/components/enemyGroup.dart';
 import 'package:flutter_app/utils/flame_effect.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 
 class BattleGame extends FlameGame {
   final GameWorld gameWorld = GameWorld();
   int level = 0;
   int gold = 0;
   int powerLevel = 0; // 파워게이지
-
   bool isGamePaused = false; // 게임 일시정지 여부
   bool isGameEnded = false; // 게임 종료 여부
-  late SlidingBackground slidingBackground; // SlidingBackground 추가
-  late AudioPlayer audioPlayer; // AudioPlayer 인스턴스
+  late SlidingBackground slidingBackground;
+  late AudioPlayer audioPlayer;
   late EnemyGroup enemyGroup;
 
   // 타이머 관련 변수
   late TimerComponent gameTimer;
-  int elapsedSeconds = 0; // 경과 시간(초)
-  late ValueNotifier<int> elapsedSecondsNotifier; // ValueNotifier 추가
+  int elapsedSeconds = 0;
+  late ValueNotifier<int> elapsedSecondsNotifier;
 
   // 카메라 관련 변수
-  late CameraController cameraController;
-  late Future<void> cameraInitialized;
+  CameraController? cameraController;
+  Future<void>? cameraInitialized;
   bool isCameraInitialized = false;
 
   // 채소 관련 변수
-  final int targetVegetableCount; // 오늘 먹어야 할 채소 개수
-  int eatenVegetableCount = 0; // 먹은 채소 개수
+  final int targetVegetableCount;
+  int eatenVegetableCount = 0;
 
-  // 생성자에서 targetVegetableCount를 받아옴
   BattleGame({required this.targetVegetableCount});
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    // 슬라이딩 배경 추가
-    slidingBackground = SlidingBackground(100); // 슬라이드 속도를 설정
-    await add(slidingBackground); // `onLoad` 호출 및 추가
+    // 슬라이딩 배경
+    slidingBackground = SlidingBackground(100);
+    await add(slidingBackground);
 
-    // 게임 월드 추가
+    // 게임 월드
     add(gameWorld);
 
-    // 배경음악 초기화 및 재생
-    audioPlayer = AudioPlayer(); // AudioPlayer 생성
-    await audioPlayer.setSource(AssetSource('audio/stranger-things-124008.mp3')); // 오디오 파일 설정
-    await audioPlayer.setReleaseMode(ReleaseMode.loop); // 반복 재생 설정
-    audioPlayer.play(AssetSource('audio/stranger-things-124008.mp3'), volume: 0.5); // 재생
-
-    // ValueNotifier 초기화
-    elapsedSecondsNotifier = ValueNotifier<int>(elapsedSeconds);
-
-    // 카메라 초기화
-    final cameras = await availableCameras();
-    if (cameras.isNotEmpty) {
-      cameraController = CameraController(
-        cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.front,
-          orElse: () => cameras.first,
-        ),
-        ResolutionPreset.low,
-      );
-      cameraInitialized = cameraController.initialize().then((_) {
-        isCameraInitialized = true;
-      }).catchError((e) {
-        print('Camera initialization error: $e');
-      });
-    } else {
-      print('No cameras available');
+    // 배경음악
+    audioPlayer = AudioPlayer();
+    try {
+      await audioPlayer.setSource(AssetSource('audio/stranger-things-124008.mp3'));
+      await audioPlayer.setReleaseMode(ReleaseMode.loop);
+      await audioPlayer.play(AssetSource('audio/stranger-things-124008.mp3'), volume: 0.5);
+    } catch (e) {
+      print('Audio initialization error: $e');
     }
 
-    // 오버레이 빌더 등록
-    overlays.addEntry('PauseOverlay', (context, game) => PauseOverlay(game: this));
-    overlays.addEntry('PauseButton', (context, game) => PauseButton(game: this));
-    overlays.addEntry('TimerOverlay', (context, game) => TimerOverlay(game: this));
-    overlays.addEntry('CameraOverlay', (context, game) => CameraOverlay(game: this));
-    overlays.addEntry('GameEndOverlay', (context, game) => GameEndOverlay(game: this));
-
-    // PauseButton 오버레이 활성화
-    overlays.add('PauseButton');
-    // TimerOverlay 오버레이 활성화
-    overlays.add('TimerOverlay');
-    // CameraOverlay 오버레이 활성화
-    overlays.add('CameraOverlay');
-
-    // 타이머 컴포넌트 추가
+    // 타이머
+    elapsedSecondsNotifier = ValueNotifier<int>(elapsedSeconds);
     gameTimer = TimerComponent(
       period: 1.0,
       repeat: true,
@@ -103,11 +75,44 @@ class BattleGame extends FlameGame {
       },
     );
     add(gameTimer);
+
+    // 카메라
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isNotEmpty) {
+        cameraController = CameraController(
+          cameras.firstWhere(
+            (camera) => camera.lensDirection == CameraLensDirection.front,
+            orElse: () => cameras.first,
+          ),
+          ResolutionPreset.low,
+        );
+        cameraInitialized = cameraController!.initialize().then((_) {
+          isCameraInitialized = true;
+        }).catchError((e) {
+          print('Camera initialization error: $e');
+        });
+      } else {
+        print('No cameras available');
+      }
+    } catch (e) {
+      print('Camera setup error: $e');
+    }
+
+    // 오버레이
+    overlays.addEntry('PauseOverlay', (context, game) => PauseOverlay(game: this));
+    overlays.addEntry('PauseButton', (context, game) => PauseButton(game: this));
+    overlays.addEntry('TimerOverlay', (context, game) => TimerOverlay(game: this));
+    overlays.addEntry('CameraOverlay', (context, game) => CameraOverlay(game: this));
+    overlays.addEntry('GameEndOverlay', (context, game) => GameEndOverlay(game: this));
+    overlays.add('PauseButton');
+    overlays.add('TimerOverlay');
+    overlays.add('CameraOverlay');
   }
 
   @override
   void update(double dt) {
-    if (!isGameEnded) { // 게임이 종료되면 업데이트 완전히 중지
+    if (!isGameEnded) {
       super.update(dt);
       if (!isGamePaused) {
         gameWorld.update(dt);
@@ -117,11 +122,15 @@ class BattleGame extends FlameGame {
 
   @override
   Future<void> onRemove() async {
-    if (isCameraInitialized) {
-      await cameraController.dispose();
+    try {
+      if (isCameraInitialized && cameraController != null) {
+        await cameraController!.dispose();
+      }
+      await audioPlayer.stop();
+      await audioPlayer.dispose();
+    } catch (e) {
+      print('Resource cleanup error: $e');
     }
-    await audioPlayer.stop();
-    await audioPlayer.dispose();
     super.onRemove();
   }
 
@@ -143,14 +152,12 @@ class BattleGame extends FlameGame {
   void hideEatCameraOverlay() {
     overlays.remove('eatCameraView');
     gameWorld.heroEnergy = gameWorld.maxHeroEnergy;
-
     if (gameWorld.heroes.isNotEmpty) {
       final heroEnergyBarPosition = gameWorld.heroEnergyBar.position;
       final flameEffectPosition = heroEnergyBarPosition + Vector2(200, 0);
       final flameEffect = FlameEffect(position: flameEffectPosition);
       add(flameEffect);
     }
-
     isGamePaused = false;
   }
 
@@ -163,32 +170,65 @@ class BattleGame extends FlameGame {
     overlays.remove('vegetableCameraView');
     gameWorld.spawnUltraProjectile();
     gameWorld.removeVegetable();
-
-    // 먹은 채소 개수 증가
     eatenVegetableCount++;
     print('Eaten Vegetables: $eatenVegetableCount / $targetVegetableCount');
 
-    // 목표 채소 개수에 도달했는지 확인
     if (eatenVegetableCount >= targetVegetableCount) {
-      // CameraOverlay를 제외한 모든 오버레이 제거
-      overlays.remove('PauseButton');
-      overlays.remove('TimerOverlay');
-      // 모든 컴포넌트 제거
-      remove(gameWorld);
-      remove(slidingBackground);
-      remove(gameTimer);
-      // 배경음악 중지
-      audioPlayer.stop();
-      // 게임 엔진 일시 중지
-      pauseEngine();
-      // 게임 종료 상태로 설정
-      isGameEnded = true;
-      // 게임 종료 오버레이 표시 (CameraOverlay는 유지됨)
-      overlays.add('GameEndOverlay');
-      isGamePaused = true; // 게임 일시정지
+      endGame();
     } else {
-      isGamePaused = false; // 게임 재개
+      isGamePaused = false;
     }
+  }
+
+  // 게임 종료 로직
+  Future<void> endGame() async {
+    if (isGameEnded) return;
+
+    isGameEnded = true;
+    isGamePaused = true;
+
+    // 오버레이 정리
+    overlays.remove('PauseButton');
+    overlays.remove('TimerOverlay');
+
+    // 컴포넌트 제거
+    remove(gameWorld);
+    remove(slidingBackground);
+    remove(gameTimer);
+
+    // 배경음악 중지
+    try {
+      await audioPlayer.stop();
+    } catch (e) {
+      print('Audio stop error: $e');
+    }
+
+    // Firestore 저장
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      try {
+        await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('game_records')
+          .add({
+            'broccoliCount': eatenVegetableCount,
+            'date': dateStr,
+            'playTime': elapsedSeconds,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+        print('Game record saved: $dateStr, $eatenVegetableCount, $elapsedSeconds');
+      } catch (e) {
+        print('Firestore save error: $e');
+      }
+    }
+
+    // 게임 엔진 일시 중지
+    pauseEngine();
+
+    // 게임 종료 오버레이
+    overlays.add('GameEndOverlay');
   }
 
   void showPauseOverlay() {
@@ -243,16 +283,19 @@ class PauseOverlay extends StatelessWidget {
     return Center(
       child: Container(
         padding: const EdgeInsets.all(20),
-        color: Colors.black54,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE6E6FA).withOpacity(0.9),
+          borderRadius: BorderRadius.circular(15),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               '일시정지됨',
-              style: TextStyle(
+              style: GoogleFonts.jua(
                 fontSize: 32,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+                color: Color(0xFFFF4081),
+                shadows: [Shadow(color: Colors.white, blurRadius: 2)],
               ),
             ),
             const SizedBox(height: 20),
@@ -260,19 +303,27 @@ class PauseOverlay extends StatelessWidget {
               onPressed: () {
                 game.hidePauseOverlay();
               },
-              child: const Text('재개', style: TextStyle(fontSize: 20)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF80AB),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text('재개', style: GoogleFonts.jua(fontSize: 20, color: Colors.white)),
             ),
             const SizedBox(height: 10),
             ElevatedButton(
               onPressed: () {
                 game.exitGame(context);
               },
-              child: const Text('종료', style: TextStyle(fontSize: 20)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF80AB),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text('종료', style: GoogleFonts.jua(fontSize: 20, color: Colors.white)),
             ),
           ],
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 0.5.seconds);
   }
 }
 
@@ -291,10 +342,10 @@ class TimerOverlay extends StatelessWidget {
         builder: (context, elapsedSeconds, child) {
           return Text(
             game.getFormattedTime(),
-            style: const TextStyle(
+            style: GoogleFonts.jua(
               fontSize: 24,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+              color: Color(0xFFFF4081),
+              shadows: [Shadow(color: Colors.white, blurRadius: 2)],
             ),
           );
         },
@@ -322,19 +373,17 @@ class CameraOverlay extends StatelessWidget {
             if (snapshot.connectionState == ConnectionState.done && game.isCameraInitialized) {
               return ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: CameraPreview(game.cameraController),
+                child: CameraPreview(game.cameraController!),
               );
             } else if (snapshot.hasError) {
-              return const Center(
+              return Center(
                 child: Text(
                   '카메라 오류',
-                  style: TextStyle(color: Colors.white),
+                  style: GoogleFonts.jua(fontSize: 16, color: Colors.white),
                 ),
               );
             } else {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
+              return const Center(child: CircularProgressIndicator(color: Color(0xFFFF4081)));
             }
           },
         ),
@@ -350,57 +399,92 @@ class GameEndOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 현재 날짜 가져오기
     final now = DateTime.now();
     final formattedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     return Container(
       width: double.infinity,
       height: double.infinity,
-      color: Colors.black87.withOpacity(0.5), // 반투명 배경
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFFFC1CC), Color(0xFFE6E6FA)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
       child: Center(
         child: Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.8),
+            color: Colors.white.withOpacity(0.9),
             borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                offset: Offset(0, 4),
+                blurRadius: 8,
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '게임 종료!',
-                style: TextStyle(
+              Image.asset(
+                'assets/images/screen/Heartsping.png',
+                width: 80,
+                height: 80,
+              ).animate().shimmer(duration: 2.seconds),
+              const SizedBox(height: 10),
+              Text(
+                '하츄핑과 함께한 게임 종료!',
+                style: GoogleFonts.jua(
                   fontSize: 32,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  shadows: [Shadow(color: Colors.black, blurRadius: 2, offset: Offset(1, 1))],
+                  color: Color(0xFFFF4081),
+                  shadows: [Shadow(color: Colors.white, blurRadius: 2)],
                 ),
               ),
               const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/heros/vegetable.png',
+                    width: 40,
+                    height: 40,
+                  ).animate().shake(duration: 1.seconds),
+                  const SizedBox(width: 10),
+                  Text(
+                    '먹은 채소: ${game.eatenVegetableCount}개',
+                    style: GoogleFonts.jua(fontSize: 20, color: Colors.black),
+                  ),
+                ],
+              ),
               Text(
                 '날짜: $formattedDate',
-                style: const TextStyle(fontSize: 20, color: Colors.white),
+                style: GoogleFonts.jua(fontSize: 20, color: Colors.black),
               ),
               Text(
                 '플레이 시간: ${game.getFormattedTime()}',
-                style: const TextStyle(fontSize: 20, color: Colors.white),
-              ),
-              Text(
-                '먹은 채소 개수: ${game.eatenVegetableCount}개',
-                style: const TextStyle(fontSize: 20, color: Colors.white),
+                style: GoogleFonts.jua(fontSize: 20, color: Colors.black),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
                   game.exitGame(context);
                 },
-                child: const Text('메인 화면으로', style: TextStyle(fontSize: 20)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFFF80AB),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text(
+                  '메인 화면으로',
+                  style: GoogleFonts.jua(fontSize: 20, color: Colors.white),
+                ),
               ),
             ],
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 0.5.seconds);
   }
 }

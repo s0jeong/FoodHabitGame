@@ -12,8 +12,10 @@ final AiManager aiManager = AiManager();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(); // Firebase 초기화
-  await spriteManager.preloadAll(); // 기존 스프라이트 로드 유지
+  print('Firebase 초기화 시작');
+  await Firebase.initializeApp();
+  print('Firebase 초기화 완료');
+  await spriteManager.preloadAll();
   runApp(const MyApp());
 }
 
@@ -59,10 +61,9 @@ class AuthWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.active) {
-          // 사용자가 로그인한 경우 MainMenu, 그렇지 않으면 LoginScreen
+          print('Auth state: ${snapshot.data?.uid}');
           return snapshot.data != null ? const MainMenu() : const LoginScreen();
         }
-        // 초기화 중일 때 로딩 표시
         return const Scaffold(
           body: Center(child: CircularProgressIndicator()),
         );
