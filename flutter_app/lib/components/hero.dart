@@ -6,25 +6,28 @@ import 'dart:math';
 import 'package:flutter_app/main.dart';
 
 class Hero extends SpriteComponent with HasGameRef<BattleGame> {
-  double attackSpeed; // 초당 공격 횟수
+  double attackSpeed;
   double timeSinceLastAttack = 0;
   bool isAttacking = false;
   int heroId;
 
   // 애니메이션 관련 변수
-  double idleTimer = 0; // 대기 모션 타이머
-  double attackAnimationTimer = 0; // 공격 애니메이션 타이머
+  double idleTimer = 0;
+  double attackAnimationTimer = 0;
   bool isAnimatingAttack = false;
-  bool isCharging = false; // 돌진 상태 여부
-  double chargeDistance = 200; // 돌진 거리
-  double chargeSpeed = 400; // 돌진 속도
-  Vector2 originalPosition; // 원래 위치 저장
+  bool isCharging = false;
+  double chargeDistance = 200;
+  double chargeSpeed = 400;
+  Vector2 originalPosition;
   Random random = Random();
 
   // 점프 애니메이션 관련 변수
-  bool isJumpingUp = false; // 점프 중인지 여부
-  double jumpHeight = 200; // 점프 높이
-  double jumpSpeed = 500; // 점프 속도
+  bool isJumping = false; // 점프 전체 상태
+  bool isJumpingUp = false; // 점프 상승 단계
+  double jumpHeight = 200;
+  double jumpSpeed = 500;
+  double jumpTime = 0; // 점프 진행 시간
+  double jumpDuration = 0.8; // 점프 전체 지속 시간 (상승 + 하강)
 
   Hero({required this.heroId, required Vector2 position, required this.attackSpeed})
       : originalPosition = position.clone(),
@@ -38,13 +41,9 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
     sprite = spriteManager.getSpriteByHeroID(heroId);
     if (sprite != null) {
       size = Vector2(sprite!.src.width.toDouble(), sprite!.src.height.toDouble());
-      size = Vector2(170, 170); // 크기 비율 조정
+      size = Vector2(170, 170);
     }
-
-    // Hero가 어두운 배경 위에 보이도록 zIndex 설정
-    priority = 1; // Hero의 우선순위를 높게 설정
-
-    // 초기 위치를 화면 크기에 맞게 설정하지 않음, 대신 update에서 처리
+    priority = 1;
   }
 
   @override
@@ -53,84 +52,77 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
 
     isAttacking = gameRef.gameWorld.enemyGroup?.enemies.isNotEmpty == true;
     if (
-      gameRef.gameWorld.enemyGroup?.enemies.isNotEmpty == true
-      && gameRef.gameWorld.enemyGroup?.isMoving == false
-      && gameRef.isGamePaused == false
-      && gameRef.gameWorld.heroEnergy > 0
-      && (gameRef.gameWorld.enemyGroup!.isPhase2Entered == false)
-    ) 
-    {
+      gameRef.gameWorld.enemyGroup?.enemies.isNotEmpty == true &&
+      gameRef.gameWorld.enemyGroup?.isMoving == false &&
+      gameRef.isGamePaused == false &&
+      gameRef.gameWorld.heroEnergy > 0 &&
+      (gameRef.gameWorld.enemyGroup!.isPhase2Entered == false)
+    ) {
       isAttacking = true;
-    }
-    else {
+    } else {
       isAttacking = false;
     }
 
-    // 화면 크기 동적으로 반영
     double screenHeight = gameRef.size.y;
-    double heroPositionY = screenHeight * 0.7; // 하단에서 30% 위
-    position = Vector2(position.x, heroPositionY);
-    
-    // 대기 모션 실행
-    if (!isAttacking && !isAnimatingAttack && !isCharging) {
+    double heroPositionY = screenHeight * 0.7;
+    originalPosition.y = heroPositionY; // originalPosition 동기화
+    if (!isJumping) {
+      position.y = heroPositionY; // 점프 중이 아닐 때만 위치 고정
+    }
+
+    if (!isAttacking && !isAnimatingAttack && !isCharging && !isJumping) {
       animateIdle(dt);
     }
 
-    // 공격 처리
     timeSinceLastAttack += dt;
     if (isAttacking && timeSinceLastAttack >= 1 / attackSpeed) {
-      attack(dt); // 공격 시 투사체 발사
+      attack(dt);
     }
 
-    // 공격 애니메이션 실행
     if (isAnimatingAttack) {
       animateAttack(dt);
     }
 
-    // 돌진 애니메이션
     if (isCharging) {
       animateCharge(dt);
     }
 
-    // 점프 애니메이션
-    if (heroId == 1 && isJumpingUp) {
+    if (isJumping) {
       animateJump(dt);
     }
   }
 
-  // 대기 모션: Y축 스케일 변화로 둠칫둠칫 효과
   void animateIdle(double dt) {
     idleTimer += dt;
-    double scaleY = 1.0 + 0.05 * sin(idleTimer * 3); // 주기적 변화
-    scale = Vector2(1.0, scaleY); // Y축 스케일 변화
+    double scaleY = 1.0 + 0.05 * sin(idleTimer * 3);
+    scale = Vector2(1.0, scaleY);
   }
 
-  // 공격 애니메이션: 히어로별로 다르게 구현
   void animateAttack(double dt) {
     attackAnimationTimer += dt;
 
     if (heroId == 0) {
-      // 히어로 ID 0: 크기 변화 애니메이션
       if (attackAnimationTimer < 0.6) {
         double scaleModifier = 1.0 + 0.2 * sin(attackAnimationTimer * 10);
-        scale = Vector2(scaleModifier, scaleModifier); // 크기 변화
+        scale = Vector2(scaleModifier, scaleModifier);
       } else {
         resetAnimation();
       }
     } else if (heroId == 1) {
-      // 히어로 ID 1: 점프 애니메이션
-      isJumpingUp = true;
-      if (attackAnimationTimer > 0.5) {
+      if (!isJumping) {
+        isJumping = true;
+        isJumpingUp = true;
+        jumpTime = 0;
+      }
+      if (attackAnimationTimer > jumpDuration) {
         resetAnimation();
       }
     } else if (heroId == 2) {
-      // 히어로 ID 2: 돌진 애니메이션
-      position += Vector2(0, -chargeSpeed * dt);
+      isCharging = true;
       if (attackAnimationTimer > 0.5) {
         resetAnimation();
       }
     } else if (heroId == 3) {
-      // 히어로 ID 3: 화면을 희망하는 훌간 (Y위치 및 크기 변화)
       if (attackAnimationTimer < 0.5) {
         double shakeAmount = 5.0 * sin(attackAnimationTimer * 30);
         position = originalPosition + Vector2(random.nextDouble() * shakeAmount, random.nextDouble() * shakeAmount);
@@ -138,51 +130,55 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
         resetAnimation();
       }
     } else {
-      // 기본 애니메이션
       resetAnimation();
     }
   }
 
-  // 점프 애니메이션
   void animateJump(double dt) {
-    // 점프를 위로
-    position.y -= jumpSpeed * dt;
-    if (position.y <= originalPosition.y - jumpHeight) {
-      // 점프 최고점에 도달하면 내려오기 시작
+    jumpTime += dt;
+    double t = jumpTime / (jumpDuration / 2); // 상승/하강 각각 절반 시간
+    double progress = t < 1.0 ? t : 2.0 - t; // 상승(0->1), 하강(1->0)
+    double height = -jumpHeight * progress * (progress - 2); // 포물선 공식
+
+    position.y = originalPosition.y - height;
+    print('점프 진행: time=$jumpTime, progress=$progress, height=$height, position.y=${position.y}');
+
+    if (t >= 2.0) {
+      isJumping = false;
       isJumpingUp = false;
+      position.y = originalPosition.y;
+      resetAnimation();
     }
   }
 
-  // 돌진 공격 애니메이션 (기본 구현)
   void animateCharge(double dt) {
     attackAnimationTimer += dt;
-
     if (attackAnimationTimer < 0.5) {
-      position += Vector2(chargeSpeed * dt, 0); // X축으로 전반 이동
+      position.x += chargeSpeed * dt;
     } else {
+      isCharging = false;
       resetAnimation();
-      isCharging = false; // 돌진 종료
     }
   }
 
-  // 애니메이션 리셋
   void resetAnimation() {
     attackAnimationTimer = 0;
     isAnimatingAttack = false;
+    isCharging = false;
+    isJumping = false;
+    isJumpingUp = false;
+    jumpTime = 0;
     position = originalPosition.clone();
-    angle = 0; // 회전 초기화
-    scale = Vector2(1.0, 1.0); // 크기 초기화
-    isJumpingUp = false; // 점프 종료
+    angle = 0;
+    scale = Vector2(1.0, 1.0);
   }
 
-  // 공격 처리 (히어로별 투사체 또는 효과)
   void attack(double dt) {
-    gameRef.gameWorld.useHeroEnergy(5); // 에너지 소모
+    gameRef.gameWorld.useHeroEnergy(5);
     timeSinceLastAttack = 0;
     isAnimatingAttack = true;
     attackAnimationTimer = 0;
 
-    // 히어로별 투사체 혹은 공격 방식
     if (heroId == 0) {
       gameRef.add(
         Projectile(heroId: heroId, position: this.position + Vector2(0, -100)),
@@ -192,15 +188,14 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
         Projectile(heroId: heroId, position: this.position + Vector2(0, -100)),
       );
     } else if (heroId == 2) {
-      isCharging = true; // 돌진 시작
+      isCharging = true;
       gameRef.add(
         Projectile(heroId: heroId, position: this.position + Vector2(0, -100)),
       );
     } else if (heroId == 3) {
-      // 히어로 ID 3: 다중 투사체 발사
       for (int i = 0; i < 5; i++) {
-        double angle = random.nextDouble() * pi * 2; // 랜덤 각도
-        Vector2 direction = Vector2(cos(angle), sin(angle)) * 100; // 랜덤 및 방향
+        double angle = random.nextDouble() * pi * 2;
+        Vector2 direction = Vector2(cos(angle), sin(angle)) * 100;
         gameRef.add(
           Projectile(heroId: heroId, position: this.position + Vector2(0, -100) + direction),
         );
