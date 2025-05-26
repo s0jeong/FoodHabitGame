@@ -1,3 +1,4 @@
+// flutter_app/lib/screens/vegetable_count_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,8 @@ import 'package:flutter_app/game_ui/eat_detector_view.dart';
 import 'package:flutter_app/game_ui/vegetable_detector_view.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_app/screens/preferences.dart';
 
 class VegetableCountScreen extends StatefulWidget {
   const VegetableCountScreen({super.key});
@@ -17,7 +20,9 @@ class VegetableCountScreen extends StatefulWidget {
 }
 
 class _VegetableCountScreenState extends State<VegetableCountScreen> {
-  int broccoliCount = 0;
+  int? broccoliCount;
+  bool isLoading = true;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -26,29 +31,67 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
   }
 
   Future<void> _loadPreferences() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      // SharedPreferences에서 캐시된 값 로드
+      final prefs = await SharedPreferences.getInstance();
+      final cachedCount = prefs.getInt('broccoliCount');
+      if (cachedCount != null) {
+        setState(() {
+          broccoliCount = cachedCount;
+        });
+      }
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print('User not logged in, redirecting to login');
+        Navigator.of(context).pushReplacementNamed('/login');
+        return;
+      }
+
+      print('Fetching Firestore data for user: ${user.uid}');
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
+
       if (doc.exists) {
+        final newCount = doc.data()!['broccoliCount'] ?? 0;
+        print('Firestore broccoliCount: $newCount');
+        await prefs.setInt('broccoliCount', newCount);
         setState(() {
-          broccoliCount = doc.data()!['broccoliCount'] ?? 0;
+          broccoliCount = newCount;
+          isLoading = false;
+        });
+      } else {
+        print('No Firestore document, creating with default values');
+        final prefsData = await Preferences.getPreferences();
+        final defaultCount = prefsData['broccoliCount']!;
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .set({
+          'broccoliCount': defaultCount,
+          'childAge': prefsData['childAge'],
+          'dailyVegetableIntake': prefsData['dailyVegetableIntake'],
+          'email': user.email,
+          'uid': user.uid,
+        }, SetOptions(merge: true));
+        await prefs.setInt('broccoliCount', defaultCount);
+        setState(() {
+          broccoliCount = defaultCount;
+          isLoading = false;
         });
       }
-    }
-  }
-
-  Future<void> _updateBroccoliCount(int newCount) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({'broccoliCount': newCount});
+    } catch (e) {
+      print('Firestore error: $e');
       setState(() {
-        broccoliCount = newCount;
+        isLoading = false;
+        errorMessage = '하츄핑이 채소를 못 찾았어요: $e';
       });
     }
   }
@@ -56,7 +99,7 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
   // 제목 텍스트 스타일
   static const titleTextStyle = TextStyle(
     fontSize: 40,
-    color: Color(0xFFFF4081), // 선명한 핑크
+    color: Color(0xFFFF4081),
     shadows: [
       Shadow(color: Colors.white, offset: Offset(3, 3), blurRadius: 6),
       Shadow(color: Colors.black54, offset: Offset(-2, -2), blurRadius: 4),
@@ -66,7 +109,7 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
   // 채소 개수 텍스트 스타일
   static const countTextStyle = TextStyle(
     fontSize: 32,
-    color: Color(0xFFFF80AB), // 연한 핑크
+    color: Color(0xFFFF80AB),
     shadows: [
       Shadow(color: Colors.white, offset: Offset(2, 2), blurRadius: 4),
       Shadow(color: Colors.black54, offset: Offset(-1, -1), blurRadius: 2),
@@ -84,48 +127,110 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFFFC1CC), Color(0xFFE6E6FA)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Center(
+            child: CircularProgressIndicator(
+              color: Color(0xFFFF4081),
+            ).animate().fadeIn(),
+          ),
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFFFC1CC), Color(0xFFE6E6FA)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '하츄핑이 당황했어요!',
+                  style: GoogleFonts.jua(fontSize: 24, color: Color(0xFFFF4081)),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  errorMessage!,
+                  style: GoogleFonts.jua(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _loadPreferences,
+                  child: Text('다시 찾아봐요!', style: GoogleFonts.jua(fontSize: 18)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFFF80AB),
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: GestureDetector(
-        onTap: () {
-          final myGame = BattleGame(targetVegetableCount: broccoliCount);
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => GameWidget(
-                game: myGame,
-                overlayBuilderMap: {
-                  'HeroSelection': (BuildContext context, BattleGame game) {
-                    return HeroSelectionOverlay(
-                      onSelect: (selectedHero) {
-                        game.gameWorld.addHeroById(selectedHero);
-                        game.hideHeroSelectionOverlay();
+        onTap: broccoliCount == null
+            ? null
+            : () {
+                print('Starting game with broccoliCount: $broccoliCount');
+                final myGame = BattleGame(targetVegetableCount: broccoliCount!);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => GameWidget(
+                      game: myGame,
+                      overlayBuilderMap: {
+                        'HeroSelection': (BuildContext context, BattleGame game) {
+                          return HeroSelectionOverlay(
+                            onSelect: (selectedHero) {
+                              game.gameWorld.addHeroById(selectedHero);
+                              game.hideHeroSelectionOverlay();
+                            },
+                          );
+                        },
+                        'eatCameraView': (BuildContext context, BattleGame game) {
+                          return EatDetectorView(
+                            onFinished: () {
+                              game.hideEatCameraOverlay();
+                            },
+                          );
+                        },
+                        'vegetableCameraView': (BuildContext context, BattleGame game) {
+                          return VegetableDetectorView(
+                            onFinished: () {
+                              game.hideVegetableCameraOverlay();
+                            },
+                          );
+                        },
                       },
-                    );
-                  },
-                  'eatCameraView': (BuildContext context, BattleGame game) {
-                    return EatDetectorView(
-                      onFinished: () {
-                        game.hideEatCameraOverlay();
-                      },
-                    );
-                  },
-                  'vegetableCameraView': (BuildContext context, BattleGame game) {
-                    return VegetableDetectorView(
-                      onFinished: () {
-                        game.hideVegetableCameraOverlay();
-                      },
-                    );
-                  },
-                },
-              ),
-            ),
-          );
-        },
+                    ),
+                  ),
+                );
+              },
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Color(0xFFFFC1CC), // 하츄핑 테마 핑크
-                Color(0xFFE6E6FA), // 파스텔 라벤더
+                Color(0xFFFFC1CC),
+                Color(0xFFE6E6FA),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -133,17 +238,14 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
           ),
           child: Stack(
             children: [
-              // 배경 하트/별 장식
               Positioned(top: 20, left: 30, child: _buildStar()),
               Positioned(top: 80, right: 40, child: _buildHeart()),
               Positioned(bottom: 100, left: 50, child: _buildStar()),
               Positioned(bottom: 30, right: 60, child: _buildHeart()),
-              // 메인 콘텐츠
               Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // 하츄핑 미니 이미지
                     Image.asset(
                       'assets/images/screen/Heartsping.png',
                       width: 100,
@@ -155,13 +257,11 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
                           curve: Curves.easeInOut,
                         ),
                     SizedBox(height: 20),
-                    // 제목
                     Text(
                       '하츄핑과 먹을 채소!',
                       style: GoogleFonts.jua(textStyle: titleTextStyle),
                     ).animate().fadeIn(duration: 1.seconds),
                     SizedBox(height: 30),
-                    // 채소 개수 표시
                     Container(
                       padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -192,26 +292,7 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 20),
-                    // 채소 개수 선택 드롭다운
-                    DropdownButton<int>(
-                      value: broccoliCount,
-                      items: List.generate(6, (index) => index).map((count) {
-                        return DropdownMenuItem<int>(
-                          value: count,
-                          child: Text('$count 개', style: GoogleFonts.jua(fontSize: 24)),
-                        );
-                      }).toList(),
-                      onChanged: (newCount) {
-                        if (newCount != null) {
-                          _updateBroccoliCount(newCount);
-                        }
-                      },
-                      dropdownColor: Color(0xFFFFC1CC),
-                      style: GoogleFonts.jua(color: Colors.black),
-                    ).animate().fadeIn(duration: 0.5.seconds),
                     SizedBox(height: 30),
-                    // 터치 안내
                     Text(
                       '채소를 눌러서 하츄핑과 게임 시작!',
                       style: GoogleFonts.jua(textStyle: guideTextStyle),
@@ -226,7 +307,6 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
     );
   }
 
-  // 하트 장식
   Widget _buildHeart() {
     return Container(
       width: 40,
@@ -235,7 +315,11 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
         color: Color(0xFFFFA1CC),
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(color: Colors.white, offset: Offset(2, 2), blurRadius: 2),
+          BoxShadow(
+            color: Colors.white,
+            offset: Offset(2, 2),
+            blurRadius: 2,
+          ),
         ],
       ),
       child: Icon(
@@ -251,16 +335,19 @@ class _VegetableCountScreenState extends State<VegetableCountScreen> {
         );
   }
 
-  // 별 장식
   Widget _buildStar() {
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: Color(0xFFFFC1CC),
+        color: Color(0xFFFFA1CC),
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(color: Colors.white, offset: Offset(2, 2), blurRadius: 2),
+          BoxShadow(
+            color: Colors.white,
+            offset: Offset(2, 2),
+            blurRadius: 2,
+          ),
         ],
       ),
       child: Icon(
