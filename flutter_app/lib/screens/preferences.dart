@@ -1,3 +1,4 @@
+// preference.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import '../models/user_profile.dart';
 
 class Preferences {
   // 나이에 따른 하루 야채 섭취량 계산 (g 단위)
@@ -24,7 +26,7 @@ class Preferences {
   }
 
   // 저장된 나이와 야채 섭취량, 브로콜리 개수 불러오기
-  static Future<Map<String, int>> getPreferences() async {
+  static Future<Map<String, dynamic>> getPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     int? childAge = prefs.getInt('childAge');
     int? dailyVegetableIntake = prefs.getInt('dailyVegetableIntake');
@@ -79,12 +81,32 @@ class Preferences {
     };
   }
 
+  // 사용자 프로필 정보 가져오기
+  static Future<UserProfile?> getUserProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (doc.exists) {
+          return UserProfile.fromMap(doc.data()!);
+        }
+      } catch (e) {
+        print('Firestore 프로필 로드 오류: $e');
+      }
+    }
+    return null;
+  }
+
   // 환경 설정 다이얼로그 표시
   static Future<void> showSettingsDialog(BuildContext context) async {
     print('환경 설정 다이얼로그 호출');
     final prefs = await SharedPreferences.getInstance();
     int initialAge = prefs.getInt('childAge') ?? 1;
     int? selectedAge = initialAge;
+    final userProfile = await getUserProfile();
 
     await showDialog(
       context: context,
@@ -97,52 +119,116 @@ class Preferences {
             '하츄핑과 채소 설정',
             style: GoogleFonts.jua(fontSize: 24, color: Color(0xFFFF4081)),
           ),
-          content: StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '아이의 나이를 선택해요!',
-                    style: GoogleFonts.jua(fontSize: 16, color: Colors.black),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButton<int>(
-                    value: selectedAge,
-                    hint: Text('나이를 선택해요', style: GoogleFonts.jua(color: Colors.black)),
-                    dropdownColor: const Color(0xFFFFA1CC),
-                    items: List.generate(9, (index) => index + 1)
-                        .map((age) => DropdownMenuItem(
-                              value: age,
-                              child: Text('만 $age세', style: GoogleFonts.jua(fontSize: 16)),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedAge = value;
-                      });
-                    },
-                    style: GoogleFonts.jua(color: Colors.black),
-                  ).animate().fadeIn(duration: 0.5.seconds),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      print('채소 기록 보기 버튼 클릭');
-                      Navigator.pop(dialogContext);
-                      _showCalendarDialog(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFFF80AB),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          content: SingleChildScrollView(
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 사용자 프로필 섹션
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFFC1CC).withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '사용자 프로필',
+                            style: GoogleFonts.jua(fontSize: 18, color: Colors.black),
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            '이메일: ${userProfile?.email ?? "없음"}',
+                            style: GoogleFonts.jua(fontSize: 16, color: Colors.black87),
+                          ),
+                          Text(
+                            'UID: ${userProfile?.uid ?? "없음"}',
+                            style: GoogleFonts.jua(fontSize: 16, color: Colors.black87),
+                          ),
+                          Text(
+                            '브로콜리 개수: ${userProfile?.broccoliCount ?? 0}',
+                            style: GoogleFonts.jua(fontSize: 16, color: Colors.black87),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(duration: 0.5.seconds),
+                    SizedBox(height: 20),
+                    // 나이 선택 섹션
+                    Text(
+                      '아이의 나이를 선택해요!',
+                      style: GoogleFonts.jua(fontSize: 16, color: Colors.black),
                     ),
-                    child: Text(
-                      '채소 기록 보기',
-                      style: GoogleFonts.jua(fontSize: 16, color: Colors.white),
+                    const SizedBox(height: 10),
+                    DropdownButton<int>(
+                      value: selectedAge,
+                      hint: Text('나이를 선택해요', style: GoogleFonts.jua(color: Colors.black)),
+                      dropdownColor: const Color(0xFFFFA1CC),
+                      items: List.generate(9, (index) => index + 1)
+                          .map((age) => DropdownMenuItem(
+                                value: age,
+                                child: Text('만 $age세', style: GoogleFonts.jua(fontSize: 16)),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedAge = value;
+                        });
+                      },
+                      style: GoogleFonts.jua(color: Colors.black),
+                    ).animate().fadeIn(duration: 0.5.seconds),
+                    const SizedBox(height: 20),
+                    // 채소 기록 보기 버튼
+                    ElevatedButton(
+                      onPressed: () {
+                        print('채소 기록 보기 버튼 클릭');
+                        Navigator.pop(dialogContext);
+                        _showCalendarDialog(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFFFF80AB),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text(
+                        '채소 기록 보기',
+                        style: GoogleFonts.jua(fontSize: 16, color: Colors.white),
+                      ),
                     ),
-                  ),
-                ],
-              );
-            },
+                    const SizedBox(height: 10),
+                    // 로그아웃 버튼
+                    ElevatedButton(
+                      onPressed: () async {
+                        print('로그아웃 버튼 클릭');
+                        await FirebaseAuth.instance.signOut();
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool('forceLogin', true); // 로그아웃 시 forceLogin 활성화
+                        Navigator.pop(dialogContext);
+                        Navigator.of(context).pushReplacementNamed('/login');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '하츄핑이 로그아웃했어요!',
+                              style: GoogleFonts.jua(fontSize: 16),
+                            ),
+                            backgroundColor: Color(0xFFFF80AB),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text(
+                        '로그아웃',
+                        style: GoogleFonts.jua(fontSize: 16, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
           actions: [
             TextButton(
@@ -284,8 +370,8 @@ class Preferences {
                               selectedDay = selected;
                               focusedDay = focused;
                             });
-                            Navigator.pop(dialogContext); // 다이얼로그 닫기
-                            await _showRecordsForDate(context, selected); // 기록 표시
+                            Navigator.pop(dialogContext);
+                            await _showRecordsForDate(context, selected);
                           },
                           calendarStyle: CalendarStyle(
                             todayDecoration: BoxDecoration(
@@ -352,19 +438,11 @@ class Preferences {
           .doc(user.uid)
           .collection('game_records')
           .where('date', isEqualTo: dateStr)
-          .get(); // orderBy 제거하여 인덱스 문제 테스트
+          .get();
 
       records = snapshot.docs.map((doc) => doc.data()).toList();
       print('로드된 문서 수: ${snapshot.docs.length}');
       print('로드된 기록: $records');
-
-      // 디버깅: 전체 문서 조회
-      final allSnapshots = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('game_records')
-          .get();
-      print('모든 문서: ${allSnapshots.docs.map((doc) => doc.data()).toList()}');
     } catch (e, stackTrace) {
       print('Firestore 기록 로드 오류: $e\n$stackTrace');
       ScaffoldMessenger.of(context).showSnackBar(

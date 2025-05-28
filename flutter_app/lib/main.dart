@@ -1,4 +1,4 @@
-// flutter_app/main.dart
+// main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,6 +7,7 @@ import 'package:flutter_app/service/ai_manager.dart';
 import 'package:flutter_app/utils/sprite_manager.dart';
 import 'package:flutter_app/screens/main_menu.dart';
 import 'package:flutter_app/screens/login_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final spriteManager = SpriteManager();
 final AiManager aiManager = AiManager();
@@ -17,7 +18,7 @@ Future<void> main() async {
   await Firebase.initializeApp();
   print('Firebase 초기화 완료');
   await spriteManager.preloadAll();
-  await spriteManager.preloadHeroImages(); // 영웅 이미지 캐싱
+  await spriteManager.preloadHeroImages();
   print('Hero images preloaded');
   runApp(const MyApp());
 }
@@ -55,14 +56,23 @@ class _MyAppState extends State<MyApp> {
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
+  Future<bool> _shouldShowLoginScreen() async {
+    final prefs = await SharedPreferences.getInstance();
+    // 세션 플래그 확인: 'forceLogin'이 true면 로그인 화면 표시
+    return prefs.getBool('forceLogin') ?? true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+    return FutureBuilder<bool>(
+      future: _shouldShowLoginScreen(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.active) {
-          print('Auth state: ${snapshot.data?.uid}');
-          return snapshot.data != null ? const MainMenu() : const LoginScreen();
+        if (snapshot.connectionState == ConnectionState.done) {
+          if (snapshot.data == true || FirebaseAuth.instance.currentUser == null) {
+            return const LoginScreen();
+          } else {
+            return const MainMenu();
+          }
         }
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       },

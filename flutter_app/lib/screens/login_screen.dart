@@ -1,10 +1,12 @@
+// login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_login/flutter_login.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../models/user_profile.dart'; // UserProfile 모델 임포트
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user_profile.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -15,9 +17,11 @@ class LoginScreen extends StatelessWidget {
         email: data.name,
         password: data.password,
       );
-      return null; // 성공
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('forceLogin', false); // 로그인 성공 시 forceLogin 비활성화
+      return null;
     } catch (e) {
-      return e.toString(); // 에러 메시지
+      return e.toString();
     }
   }
 
@@ -33,18 +37,20 @@ class LoginScreen extends StatelessWidget {
           .collection('users')
           .doc(user.uid)
           .set(profile.toMap());
-      return null; // 성공
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('forceLogin', false); // 회원가입 성공 시 forceLogin 비활성화
+      return null;
     } catch (e) {
-      return e.toString(); // 에러 메시지
+      return e.toString();
     }
   }
 
   Future<String?> _recoverPassword(String email) async {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      return null; // 성공
+      return null;
     } catch (e) {
-      return e.toString(); // 에러 메시지
+      return e.toString();
     }
   }
 
@@ -66,12 +72,12 @@ class LoginScreen extends StatelessWidget {
           onSignup: _signupUser,
           onRecoverPassword: _recoverPassword,
           onSubmitAnimationCompleted: () {
-            Navigator.of(context).pushReplacementNamed('/main_menu'); // 메인 메뉴로 이동
+            Navigator.of(context).pushReplacementNamed('/main_menu');
           },
           theme: LoginTheme(
             primaryColor: Color(0xFFFFA1CC),
             accentColor: Color(0xFFE6E6FA),
-            titleStyle: GoogleFonts.jua( // titleStyle을 LoginTheme으로 이동
+            titleStyle: GoogleFonts.jua(
               fontSize: 40,
               color: Color(0xFFFF4081),
               shadows: [
