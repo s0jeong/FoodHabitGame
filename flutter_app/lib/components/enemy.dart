@@ -48,7 +48,7 @@ class Enemy extends SpriteComponent with HasGameRef {
   // 화면 높이에 따라 동적 Y 위치를 설정하는 메서드
   void adjustDynamicPosition() {
     double screenHeight = gameRef.size.y;
-    position.y = screenHeight * 0.7; // 화면 하단에서 30% 위에 위치
+    position.y = screenHeight * 0.75; // 화면 하단에서 30% 위에 위치
   }
 
   void takeDamage() {

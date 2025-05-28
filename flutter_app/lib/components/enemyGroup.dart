@@ -50,7 +50,7 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
         boss.position = Vector2(startX, gameRef.gameWorld.groundYPos);
 
         // 크기 효과와 나타나는 효과를 분리하여 순차적으로 적용
-        boss.add(ScaleEffect.to(Vector2.all(2.0), EffectController(duration: 1.0)));
+        boss.add(ScaleEffect.to(Vector2.all(1.2), EffectController(duration: 1.0)));
         
         Future.delayed(const Duration(seconds: 1), () {
           boss.add(OpacityEffect.to(1.0, EffectController(duration: 1.0)));
@@ -65,10 +65,10 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
           var enemy = Enemy(enemyID: rand);
 
           double startX =
-              gameRef.size.x + 100 + (i * 200); // 첫 번째 적은 100, 두 번째 적은 300에 배치
+              gameRef.size.x + 100 + (i * 300); // 첫 번째 적은 100, 두 번째 적은 300에 배치
           enemy.position = Vector2(startX, gameRef.gameWorld.groundYPos);
 
-          enemies.add(enemy);
+          // enemies.add(enemy);
           enemies.add(enemy);
           add(enemy);
 
@@ -86,7 +86,7 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
       // 적이 화면으로 이동하는 애니메이션
       for (int i = 0; i < enemies.length; i++) {
         var enemy = enemies[i];
-        double targetX = gameRef.size.x - (150 - (i * 75));
+        double targetX = gameRef.size.x - (300 - (i * 150));
 
         enemy.add(
           MoveEffect.to(
