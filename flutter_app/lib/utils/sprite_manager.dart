@@ -24,6 +24,7 @@ class SpriteManager {
   final String doubleSwordStrike = 'double_sword_strike';
 
   final String bro = 'bro';
+  final String cloud = 'cloud'; // 추가
 
   final Map<String, Sprite> _sprites = {};
   final Map<int, String> _heroNameID = {
@@ -48,13 +49,13 @@ class SpriteManager {
     3: 'double_sword_strike',
   };
   final Map<int, int> _projectileIdbyHeroId = {
-    0: 1, // apple
-    1: 1, // carrot
-    2: 3, // eggplant
-    3: 2, // banana
+    0: 1,
+    1: 0,
+    2: 3,
+    3: 2,
+    4: 0,
   };
-  final Map<int, Uint8List> _heroImages = {}; // 캐싱 추가
-
+  final Map<int, Uint8List> _heroImages = {};
   final Map<String, SpriteAnimation> _animations = {};
 
   Future<Sprite> loadSprite(String name, String folderPath) async {
@@ -74,6 +75,7 @@ class SpriteManager {
     const heroPath = 'heros';
     const enemyPath = 'enemies';
     const projectilePath = 'projectiles';
+    const screenPath = 'screen'; // 추가
 
     await Future.wait([
       loadSprite(apple, heroPath),
@@ -92,12 +94,12 @@ class SpriteManager {
       loadSprite(swordStrike, projectilePath),
       loadSprite(doubleSwordStrike, projectilePath),
       loadSprite(bro, heroPath),
+      loadSprite(cloud, screenPath), // cloud.png 로드
     ]);
 
     print('Loaded sprites: ${_sprites.length}');
   }
 
-  // 영웅 스프라이트를 Uint8List로 변환 및 캐싱
   Future<void> preloadHeroImages() async {
     for (var id in _heroNameID.keys) {
       final sprite = _sprites[_heroNameID[id]];
@@ -131,6 +133,5 @@ class SpriteManager {
 
   Sprite? getUltraProjectileSprite() => _sprites[bro];
 
-  // 캐싱된 영웅 이미지 반환
   Uint8List? getHeroImageById(int id) => _heroImages[id];
 }

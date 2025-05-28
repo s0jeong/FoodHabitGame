@@ -1,89 +1,77 @@
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/painting.dart';  // Color 클래스를 사용하기 위해 import
+import 'package:flutter/painting.dart';
+import 'package:flutter/material.dart';
 
 class SlidingBackground extends Component with HasGameRef<FlameGame> {
-  final List<SpriteComponent> topBackgrounds = [];
-  final List<SpriteComponent> bottomBackgrounds = [];
+  final List<SpriteComponent> backgrounds = [];
   final double slideSpeed;
   final double overlapRatio;
 
-  SlidingBackground(this.slideSpeed, {this.overlapRatio = 0.9});
+  SlidingBackground(this.slideSpeed, {this.overlapRatio = 0.8});
 
   @override
   Future<void> onLoad() async {
-    await _initializeBackgrounds();
+    await _initializeBackground();
   }
 
-  Future<void> _initializeBackgrounds() async {
-    topBackgrounds.clear();
-    bottomBackgrounds.clear();
+  Future<void> _initializeBackground() async {
+    backgrounds.clear();
 
     final screenSize = gameRef.size;
 
-    // 공백 부분을 연한 하늘색으로 채우는 배경을 추가
-    final skyBackground = RectangleComponent(
-      size: screenSize,
-      position: Vector2(0, 0), // 화면의 왼쪽 상단에 배치
-      paint: Paint()..color = Color.fromARGB(255, 199, 233, 249), // 연한 하늘색으로 채우기
-    );
-    add(skyBackground); // 하늘색 배경을 맨 뒤에 추가
+    // 배경 초기화 (bg_ing1.jpg, bg_ing2.jpg)
+    try {
+      final bgSprite1 = await Sprite.load('screen/bg_ing1.jpg');
+      final bgSprite2 = await Sprite.load('screen/bg_ing2.jpg');
 
-    // 하단 배경 (bg4) 초기화
-    for (int i = 0; i < 2; i++) {
-      final sprite = await Sprite.load('screen/bg4.png');
-      final bottomBackground = SpriteComponent(
-        sprite: sprite,
-        size: Vector2(screenSize.x, screenSize.y), // 화면 크기로 설정
-        position: Vector2(
-          screenSize.x * i * (1 - overlapRatio),
-          screenSize.y - screenSize.y, // 화면 하단에 위치
-        ),
-      );
-      bottomBackgrounds.add(bottomBackground);
-      add(bottomBackground); // 하단 배경을 하늘색 배경 위에 추가
-    }
+      // 배경 크기를 화면 너비보다 1% 크게 설정
+      final bgSize = Vector2(screenSize.x * 1.01, screenSize.y);
 
-    // 상단 배경 (bg1, bg2, bg3) 초기화
-    for (int i = 0; i < 3; i++) {
-      final sprite = await Sprite.load('screen/bg${i + 1}.png');
-      final topBackground = SpriteComponent(
-        sprite: sprite,
-        size: Vector2(screenSize.x, screenSize.y), // 화면 크기로 설정
-        position: Vector2(
-          screenSize.x * i * (1 - overlapRatio),
-          screenSize.y * 0.4, // 화면의 중앙에서 조금 위쪽에 위치
-        ),
+      // 첫 번째 배경: bg_ing1.jpg
+      final bg1 = SpriteComponent(
+        sprite: bgSprite1,
+        size: bgSize,
+        position: Vector2(0, 0),
+        priority: -1,
       );
-      topBackgrounds.add(topBackground);
-      add(topBackground); // 상단 배경을 하늘색 배경 위에 추가
+      // 두 번째 배경: bg_ing2.jpg
+      final bg2 = SpriteComponent(
+        sprite: bgSprite2,
+        size: bgSize,
+        position: Vector2(screenSize.x, 0),
+        priority: -1,
+      );
+
+      backgrounds.add(bg1);
+      backgrounds.add(bg2);
+      add(bg1);
+      add(bg2);
+    } catch (e) {
+      print('Error loading bg_ing1.jpg or bg_ing2.jpg: $e');
+      final skyBackground = RectangleComponent(
+        size: screenSize,
+        position: Vector2.zero(),
+        paint: Paint()
+          ..shader = LinearGradient(
+            colors: [Color(0xFFD9E7FF), Color(0xFFFFF0F5)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ).createShader(Rect.fromLTWH(0, 0, screenSize.x, screenSize.y)),
+      );
+      add(skyBackground);
     }
   }
 
   @override
-  void onGameResize(Vector2 newSize) {
-    super.onGameResize(newSize);
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
 
-    final screenSize = newSize;
-
-    // 하단 배경 재배치
-    for (int i = 0; i < bottomBackgrounds.length; i++) {
-      final background = bottomBackgrounds[i];
-      background.size = Vector2(screenSize.x, screenSize.y); // 화면을 꽉 채우도록 수정
-      background.position = Vector2(
-        screenSize.x * i * (1 - overlapRatio),
-        screenSize.y - screenSize.y, // 하단 배경을 화면 맨 아래로 설정
-      );
-    }
-
-    // 상단 배경 재배치
-    for (int i = 0; i < topBackgrounds.length; i++) {
-      final background = topBackgrounds[i];
-      background.size = Vector2(screenSize.x, screenSize.y); // 화면을 꽉 채우도록 수정
-      background.position = Vector2(
-        screenSize.x * i * (1 - overlapRatio),
-        screenSize.y * -0.5, // 상단 배경을 화면의 중앙에서 조금 위쪽에 배치
-      );
+    // 배경 재배치
+    for (var i = 0; i < backgrounds.length; i++) {
+      final bg = backgrounds[i];
+      bg.size = Vector2(size.x * 1.01, size.y);
+      bg.position = Vector2(size.x * i, 0);
     }
   }
 
@@ -91,19 +79,21 @@ class SlidingBackground extends Component with HasGameRef<FlameGame> {
   void update(double dt) {
     super.update(dt);
 
-    // 상단 배경 슬라이드
-    for (final bg in topBackgrounds) {
+    // 배경 슬라이드
+    for (final bg in backgrounds) {
       bg.position.x -= slideSpeed * dt;
-      if (bg.position.x + bg.size.x * (1 - overlapRatio) < 0) {
-        bg.position.x += bg.size.x * topBackgrounds.length * (1 - overlapRatio);
-      }
     }
 
-    // 하단 배경 슬라이드
-    for (final bg in bottomBackgrounds) {
-      bg.position.x -= slideSpeed * dt;
-      if (bg.position.x + bg.size.x * (1 - overlapRatio) < 0) {
-        bg.position.x += bg.size.x * bottomBackgrounds.length * (1 - overlapRatio);
+    // 배경 재배치 (15/16 지점에서 전환)
+    for (var i = 0; i < backgrounds.length; i++) {
+      final bg = backgrounds[i];
+      // 15/16 지점 = 화면 너비의 1/16 남음
+      final threshold = bg.size.x / 16;
+      if (bg.position.x + bg.size.x <= threshold) {
+        final prevIndex = (i - 1 + backgrounds.length) % backgrounds.length;
+        final prevBg = backgrounds[prevIndex];
+        bg.position.x = prevBg.position.x + prevBg.size.x;
+        print('배경 전환: bg[$i] to x=${bg.position.x}');
       }
     }
   }
