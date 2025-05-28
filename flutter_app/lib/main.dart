@@ -1,11 +1,12 @@
+// flutter_app/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_core/firebase_core.dart'; // Firebase Core 추가
-import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth 추가
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_app/service/ai_manager.dart';
 import 'package:flutter_app/utils/sprite_manager.dart';
 import 'package:flutter_app/screens/main_menu.dart';
-import 'package:flutter_app/screens/login_screen.dart'; // LoginScreen 추가
+import 'package:flutter_app/screens/login_screen.dart';
 
 final spriteManager = SpriteManager();
 final AiManager aiManager = AiManager();
@@ -16,6 +17,8 @@ Future<void> main() async {
   await Firebase.initializeApp();
   print('Firebase 초기화 완료');
   await spriteManager.preloadAll();
+  await spriteManager.preloadHeroImages(); // 영웅 이미지 캐싱
+  print('Hero images preloaded');
   runApp(const MyApp());
 }
 
@@ -30,7 +33,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    aiManager.loadModel(); // 기존 AI 모델 로드 유지
+    aiManager.loadModel();
   }
 
   @override
@@ -39,10 +42,8 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Food Habit Game',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const AuthWrapper(), // AuthWrapper로 첫 화면 설정
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const AuthWrapper(),
       routes: {
         '/main_menu': (context) => const MainMenu(),
         '/login': (context) => const LoginScreen(),
@@ -51,7 +52,6 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-// 인증 상태에 따라 화면을 전환하는 위젯
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -64,9 +64,7 @@ class AuthWrapper extends StatelessWidget {
           print('Auth state: ${snapshot.data?.uid}');
           return snapshot.data != null ? const MainMenu() : const LoginScreen();
         }
-        return const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        );
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
       },
     );
   }
