@@ -11,7 +11,7 @@ class Enemy extends SpriteComponent with HasGameRef {
   bool isDying = false;
   double idleTimer = 0.0;
 
-  late Vector2 originalPosition; // originalPosition 저장
+  late Vector2 originalPosition;
   bool isBoss;
 
   Enemy({required this.enemyID, this.isBoss = false}) : super(size: Vector2(60, 60));
@@ -20,15 +20,12 @@ class Enemy extends SpriteComponent with HasGameRef {
   Future<void> onLoad() async {
     sprite = spriteManager.getEnemySpriteByHeroID(enemyID);
     if (sprite != null) {
-      size = Vector2(sprite!.src.width.toDouble(), sprite!.src.height.toDouble());
-      // 보스인 경우 size를 조정하지 않음
-      if (!isBoss) {
-        size = size * 0.5; // 보스가 아닐 경우만 크기 조정
-      }
+      // 화면 크기에 따른 적군 크기 계산
+      double screenWidth = gameRef.size.x;
+      double baseSize = screenWidth * (isBoss ? 0.2 : 0.1); // 보스는 화면 너비의 20%, 일반 적군은 10%
+      size = Vector2(baseSize, baseSize);
     }
     anchor = Anchor.bottomCenter;
-
-    // originalPosition 초기화
     originalPosition = position.clone();
   }
 
@@ -36,52 +33,59 @@ class Enemy extends SpriteComponent with HasGameRef {
   void update(double dt) {
     super.update(dt);
     animateIdle(dt);
-    adjustDynamicPosition(); // Y 위치를 동적으로 조정
+    adjustDynamicPosition();
   }
 
   void animateIdle(double dt) {
     idleTimer += dt;
-    double scaleY = 1.0 + 0.05 * sin(idleTimer * 3); // 주기적 변화
-    scale = Vector2(1.0, scaleY); // Y축 스케일 변화
+    double screenHeight = gameRef.size.y;
+    double scaleY = 1.0 + (screenHeight * 0.0001) * sin(idleTimer * 3); // 화면 크기에 비례한 애니메이션
+    scale = Vector2(1.0, scaleY);
   }
 
-  // 화면 높이에 따라 동적 Y 위치를 설정하는 메서드
   void adjustDynamicPosition() {
     double screenHeight = gameRef.size.y;
-    position.y = screenHeight * 0.75; // 화면 하단에서 30% 위에 위치
+    position.y = screenHeight * 0.85; // 화면 하단에서 15% 위에 위치 (기존 25%에서 수정)
   }
 
   void takeDamage() {
-    // 불꽃 효과 추가
+    // 화면 크기에 따른 효과 조정
+    double screenWidth = gameRef.size.x;
+    
     add(ColorEffect(
-      const Color(0xFFFFFFFF), // 완전히 흰색으로 변경
+      const Color(0xFFFFFFFF),
       EffectController(duration: 0.3, reverseDuration: 0.3),
     ));
 
-    // 뒤로 기울어지는 효과 추가
+    // 회전 각도를 화면 크기에 비례하게 설정
+    double rotationAngle = (screenWidth / 1000) * 0.3; // 기준 화면 너비 1000px
     add(RotateEffect.to(
-      0.3, // 뒤로 기울어질 각도 (라디안, 음수 값은 반시계 방향)
+      rotationAngle,
       EffectController(duration: 0.2, reverseDuration: 0.2),
     ));
 
-    // 이후 다시 원래 상태로 복원
     add(OpacityEffect.to(
-      1.0, // 다시 불투명으로
+      1.0,
       EffectController(duration: 0.1),
     ));
   }
 
   void addExplosionEffect() {
+    double screenWidth = gameRef.size.x;
+    double screenHeight = gameRef.size.y;
+    double particleSize = screenWidth * 0.005; // 화면 너비의 0.5%
+    double particleSpeed = screenWidth * 0.5; // 화면 너비의 50%
+    
     final particleComponent = ParticleSystemComponent(
       particle: Particle.generate(
         count: 30,
         lifespan: 1.0,
         generator: (i) => AcceleratedParticle(
-          acceleration: Vector2(0, 200),
-          speed: Vector2.random() * 500,
+          acceleration: Vector2(0, screenHeight * 0.2), // 화면 높이의 20%만큼 가속
+          speed: Vector2.random() * particleSpeed,
           position: position.clone(),
           child: CircleParticle(
-            radius: 5.0,
+            radius: particleSize,
             paint: Paint()..color = const Color(0xFFFF0000),
           ),
         ),
@@ -97,14 +101,11 @@ class Enemy extends SpriteComponent with HasGameRef {
     if (isDying) return;
     isDying = true;
 
-    // 폭발 효과 추가
     addExplosionEffect();
 
-    // 폭발 소리 재생
     final player = AudioPlayer();
     await player.play(AssetSource('audio/EXPLOSION_Distorted_01_Long_stereo.wav'));
 
-    // 1초 후에 컴포넌트를 삭제
     Future.delayed(const Duration(seconds: 1), () {
       removeFromParent();
     });

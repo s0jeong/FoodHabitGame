@@ -40,34 +40,55 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
   Future<void> onLoad() async {
     sprite = spriteManager.getSpriteByHeroID(heroId);
     if (sprite != null) {
-      size = Vector2(sprite!.src.width.toDouble(), sprite!.src.height.toDouble());
-      size = Vector2(170, 170);
+      double screenWidth = gameRef.size.x;
+      double heroSize = screenWidth * 0.15; // 화면 너비의 15%
+      size = Vector2(heroSize, heroSize);
     }
     priority = 1;
+    updateAnimationParameters(); // 초기 애니메이션 파라미터 설정
+  }
+
+  // 애니메이션 관련 변수들을 화면 크기에 맞게 조정
+  void updateAnimationParameters() {
+    double screenWidth = gameRef.size.x;
+    double screenHeight = gameRef.size.y;
+    
+    // 점프 관련 파라미터
+    jumpHeight = screenHeight * 0.25;
+    jumpSpeed = screenWidth * 0.4;
+    
+    // 돌진 관련 파라미터
+    chargeDistance = screenWidth * 0.2;
+    chargeSpeed = screenWidth * 0.3;
+    
+    // 원래 위치 업데이트
+    originalPosition.y = screenHeight * 0.92; // 화면 하단에서 15% 위에 위치 (기존 30%에서 수정)
+    if (!isJumping) {
+      position.y = originalPosition.y;
+    }
   }
 
   @override
   void update(double dt) {
     super.update(dt);
+    updateAnimationParameters();
 
-    isAttacking = gameRef.gameWorld.enemyGroup?.enemies.isNotEmpty == true;
+    // 적군이 완전히 도착한 후에만 공격 가능하도록 수정
     if (
       gameRef.gameWorld.enemyGroup?.enemies.isNotEmpty == true &&
       gameRef.gameWorld.enemyGroup?.isMoving == false &&
       gameRef.isGamePaused == false &&
       gameRef.gameWorld.heroEnergy > 0 &&
+      !gameRef.gameWorld.isEnergyDepleted &&
       (gameRef.gameWorld.enemyGroup!.isPhase2Entered == false)
     ) {
       isAttacking = true;
+      // 공격 시작 시 타이머 초기화
+      if (timeSinceLastAttack >= 1 / attackSpeed) {
+        timeSinceLastAttack = 0;
+      }
     } else {
       isAttacking = false;
-    }
-
-    double screenHeight = gameRef.size.y;
-    double heroPositionY = screenHeight * 0.7;
-    originalPosition.y = heroPositionY; // originalPosition 동기화
-    if (!isJumping) {
-      position.y = heroPositionY; // 점프 중이 아닐 때만 위치 고정
     }
 
     if (!isAttacking && !isAnimatingAttack && !isCharging && !isJumping) {
@@ -94,16 +115,19 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
 
   void animateIdle(double dt) {
     idleTimer += dt;
-    double scaleY = 1.0 + 0.05 * sin(idleTimer * 3);
+    double screenHeight = gameRef.size.y;
+    double scaleY = 1.0 + (screenHeight * 0.0001) * sin(idleTimer * 3); // 화면 크기에 비례한 애니메이션
     scale = Vector2(1.0, scaleY);
   }
 
   void animateAttack(double dt) {
     attackAnimationTimer += dt;
+    double screenWidth = gameRef.size.x;
+    double screenHeight = gameRef.size.y;
 
     if (heroId == 0) {
       if (attackAnimationTimer < 0.6) {
-        double scaleModifier = 1.0 + 0.2 * sin(attackAnimationTimer * 10);
+        double scaleModifier = 1.0 + (screenWidth * 0.0002) * sin(attackAnimationTimer * 10);
         scale = Vector2(scaleModifier, scaleModifier);
       } else {
         resetAnimation();
@@ -124,8 +148,11 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
       }
     } else if (heroId == 3) {
       if (attackAnimationTimer < 0.5) {
-        double shakeAmount = 5.0 * sin(attackAnimationTimer * 30);
-        position = originalPosition + Vector2(random.nextDouble() * shakeAmount, random.nextDouble() * shakeAmount);
+        double shakeAmount = (screenWidth * 0.005) * sin(attackAnimationTimer * 30);
+        position = originalPosition + Vector2(
+          random.nextDouble() * shakeAmount,
+          random.nextDouble() * shakeAmount
+        );
       } else {
         resetAnimation();
       }
@@ -154,7 +181,9 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
   void animateCharge(double dt) {
     attackAnimationTimer += dt;
     if (attackAnimationTimer < 0.5) {
-      position.x += chargeSpeed * dt;
+      double screenWidth = gameRef.size.x;
+      double chargeAmount = chargeSpeed * dt;
+      position.x = min(position.x + chargeAmount, originalPosition.x + (screenWidth * 0.3));
     } else {
       isCharging = false;
       resetAnimation();
@@ -174,31 +203,55 @@ class Hero extends SpriteComponent with HasGameRef<BattleGame> {
   }
 
   void attack(double dt) {
-    gameRef.gameWorld.useHeroEnergy(5);
-    timeSinceLastAttack = 0;
-    isAnimatingAttack = true;
-    attackAnimationTimer = 0;
+    double energyCost = 0;
+    switch (heroId) {
+      case 0:
+        energyCost = 3.0;
+        break;
+      case 1:
+        energyCost = 4.0;
+        break;
+      case 2:
+        energyCost = 5.0;
+        break;
+      case 3:
+        energyCost = 6.0;
+        break;
+      default:
+        energyCost = 3.0;
+    }
 
-    if (heroId == 0) {
-      gameRef.add(
-        Projectile(heroId: heroId, position: this.position + Vector2(0, -100)),
-      );
-    } else if (heroId == 1) {
-      gameRef.add(
-        Projectile(heroId: heroId, position: this.position + Vector2(0, -100)),
-      );
-    } else if (heroId == 2) {
-      isCharging = true;
-      gameRef.add(
-        Projectile(heroId: heroId, position: this.position + Vector2(0, -100)),
-      );
-    } else if (heroId == 3) {
-      for (int i = 0; i < 5; i++) {
-        double angle = random.nextDouble() * pi * 2;
-        Vector2 direction = Vector2(cos(angle), sin(angle)) * 100;
-        gameRef.add(
-          Projectile(heroId: heroId, position: this.position + Vector2(0, -100) + direction),
-        );
+    gameRef.gameWorld.useHeroEnergy(energyCost);
+    
+    if (gameRef.gameWorld.heroEnergy > 0) {
+      timeSinceLastAttack = 0;
+      isAnimatingAttack = true;
+      attackAnimationTimer = 0;
+
+      // 적군이 완전히 도착한 후에만 발사체 생성
+      if (!gameRef.gameWorld.enemyGroup!.isMoving) {
+        if (heroId == 0) {
+          gameRef.add(
+            Projectile(heroId: heroId, position: this.position + Vector2(0, -100)),
+          );
+        } else if (heroId == 1) {
+          gameRef.add(
+            Projectile(heroId: heroId, position: this.position + Vector2(0, -100)),
+          );
+        } else if (heroId == 2) {
+          isCharging = true;
+          gameRef.add(
+            Projectile(heroId: heroId, position: this.position + Vector2(0, -100)),
+          );
+        } else if (heroId == 3) {
+          for (int i = 0; i < 5; i++) {
+            double angle = random.nextDouble() * pi * 2;
+            Vector2 direction = Vector2(cos(angle), sin(angle)) * 100;
+            gameRef.add(
+              Projectile(heroId: heroId, position: this.position + Vector2(0, -100) + direction),
+            );
+          }
+        }
       }
     }
   }

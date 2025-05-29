@@ -5,23 +5,33 @@ import 'package:flutter_app/main.dart';
 
 class UltraProjectile extends Projectile {
   double currentSpeed = 0; // 현재 속도
-  final double maxSpeedMultiplier = 3; // 최고 속도 배수
-  final double acceleration = 0.005; // 가속도
+  late double maxSpeedMultiplier;
+  late double acceleration;
 
   UltraProjectile({required Vector2 position})
       : super(heroId: 0, position: position);
 
   @override
   Future<void> onLoad() async {
-    // 다른 이미지를 사용하여 스프라이트를 로드합니다.
     sprite = spriteManager.getUltraProjectileSprite();
     if (sprite == null) {
       print("Failed to load ultra projectile sprite.");
       return;
     }
 
-    // 크기를 2배로 조정
-    size = Vector2(sprite!.src.width.toDouble(), sprite!.src.height.toDouble());
+    // 화면 크기에 따른 크기 및 속도 계산
+    double screenWidth = gameRef.size.x;
+    double screenHeight = gameRef.size.y;
+    
+    // 울트라 발사체는 일반 발사체보다 더 크게 설정
+    double projectileSize = screenWidth * 0.08; // 화면 너비의 8%
+    size = Vector2(projectileSize, projectileSize);
+    
+    // 속도 관련 파라미터 설정
+    maxSpeedMultiplier = 3.0;
+    acceleration = screenWidth * 0.000005; // 화면 크기에 비례한 가속도
+    speed = screenWidth * 0.5; // 기본 속도는 화면 너비의 50%
+
     anchor = Anchor.center;
 
     // 적군이 있을 때만 목표 설정
@@ -32,7 +42,9 @@ class UltraProjectile extends Projectile {
 
   @override
   void update(double dt) {
-    super.update(dt);
+    // 화면 크기에 따른 충돌 범위 계산
+    double screenWidth = gameRef.size.x;
+    double collisionRange = screenWidth * 0.015; // 화면 너비의 1.5%
 
     // 가속도를 적용하여 현재 속도를 증가시킴
     currentSpeed += acceleration * dt;
@@ -56,8 +68,7 @@ class UltraProjectile extends Projectile {
     }
 
     // 목표에 도달했을 때 충돌 감지 후 궁극적인 데미지 적용
-    if ((targetPosition - position).length < 10) {
-      // Trigger explosion effect here (if applicable)
+    if ((targetPosition - position).length < collisionRange) {
       removeFromParent();
       gameRef.gameWorld.enemyGroup?.takeUltDamage(); // 궁극적인 데미지를 줌
       gameRef.gameWorld.enemyGroup?.enemies.forEach((enemy) {

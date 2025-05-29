@@ -11,6 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  libphonenumber_plugin: ^0.3.3
   flame : ^1.21.0
   audioplayers: ^6.1.0
   flame_audio: ^2.10.6

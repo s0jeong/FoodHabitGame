@@ -13,6 +13,7 @@ final spriteManager = SpriteManager();
 final AiManager aiManager = AiManager();
 
 Future<void> main() async {
+  // 앱 실행 시 초기화 작업 initialize
   WidgetsFlutterBinding.ensureInitialized();
   print('Firebase 초기화 시작');
   await Firebase.initializeApp();
@@ -20,9 +21,12 @@ Future<void> main() async {
   await spriteManager.preloadAll();
   await spriteManager.preloadHeroImages();
   print('Hero images preloaded');
+
+  // 앱 실행
   runApp(const MyApp());
 }
 
+// 앱 실행
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -30,6 +34,7 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
+// 앱 상태 관리
 class _MyAppState extends State<MyApp> {
   @override
   void initState() {
@@ -53,6 +58,7 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
+// 로그인 관련 인증 처리
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 

@@ -12,6 +12,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 
 // ignore: must_be_immutable
+// 먹기 카메라 뷰
 class EatDetectorView extends StatefulWidget {
   @override
   State<EatDetectorView> createState() => _FaceDetectorViewState();
@@ -31,12 +32,17 @@ class _FaceDetectorViewState extends State<EatDetectorView> {
   bool _canProcess = true;
   bool _isBusy = false;
   CustomPaint? _customPaint;
-  var _cameraLensDirection = CameraLensDirection.back;
+  var _cameraLensDirection = CameraLensDirection.front;
 
-  int _recognizedTime = 0; // 얼굴 인식된 시간 (밀리초 단위)
-  Timer? _recognitionTimer; // 타이머 관리
-  double _boxOpacity = 1.0; // 이미지 상자의 투명도
-  final maxTime = 2000; // 최대 인식 시간
+  int _recognizedTime = 0;
+  Timer? _recognitionTimer;
+  double _boxOpacity = 1.0;
+  final maxTime = 2000;
+
+  // 먹기 패턴 인식을 위한 변수들
+  bool _wasEating = false; // 이전 상태가 먹는 중이었는지
+  int _eatingCount = 0; // 완료된 먹기 동작 횟수
+  double _currentProgress = 0.0; // 현재 진행도 (0-100%)
 
   List<String> _imagePaths = [
     'assets/images/ui/eat_guide_1.png',
@@ -44,8 +50,8 @@ class _FaceDetectorViewState extends State<EatDetectorView> {
     'assets/images/ui/eat_guide_3.png',
   ];
   
-  int _currentImageIndex = 0; // 현재 표시할 이미지 인덱스
-  Timer? _imageChangeTimer; // 이미지 변경 타이머
+  int _currentImageIndex = 0;
+  Timer? _imageChangeTimer;
 
   String? _text;
   int flag = 0;
@@ -59,19 +65,31 @@ class _FaceDetectorViewState extends State<EatDetectorView> {
         timer.cancel();
         return;
       }
-      if (flag == 0) {
-        return;
-      }
-      // 음식 먹는 동안만 게이지 증가
-      _recognizedTime += 10;
 
-      if (_recognizedTime >= maxTime) {
-        // 인식 완료
-        timer.cancel();
-        _recognitionTimer = null;
-        print('finish');
-        widget.onFinished();
+      // 먹기 패턴 인식 로직
+      bool isEating = flag == 1;
+      
+      // 0->1->0 패턴 감지
+      if (!_wasEating && isEating) {
+        // 0에서 1로 변경된 순간
+        print('Started eating');
+      } else if (_wasEating && !isEating) {
+        // 1에서 0으로 변경된 순간 (먹기 동작 완료)
+        _eatingCount++;
+        _currentProgress = (_eatingCount / 4) * 100; // 25%씩 증가
+        print('Completed eating motion: $_eatingCount');
+
+        if (_eatingCount >= 4) {
+          // 4번의 먹기 동작 완료
+          timer.cancel();
+          _recognitionTimer = null;
+          print('All eating motions completed');
+          widget.onFinished();
+        }
       }
+      
+      _wasEating = isEating;
+
       if (mounted) {
         setState(() {});
       }
@@ -79,17 +97,11 @@ class _FaceDetectorViewState extends State<EatDetectorView> {
   }
 
   @override
-  void dispose() {
-    _canProcess = false;
-    _recognitionTimer?.cancel();
-    _faceDetector.close();
-    _imageChangeTimer?.cancel(); // 이미지 변경 타이머 해제
-    super.dispose();
-  }
-
-
-  @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final imageSize = screenSize.width * 0.3;
+    final sliderWidth = screenSize.width * 0.8;
+    
     return Material(
       color: Colors.black.withOpacity(1),
       child: Stack(
@@ -99,52 +111,87 @@ class _FaceDetectorViewState extends State<EatDetectorView> {
             customPaint: _customPaint,
             onImage: _processImage,
             initialCameraLensDirection: _cameraLensDirection,
-            onCameraLensDirectionChanged: (value) => _cameraLensDirection = value,
+            onCameraLensDirectionChanged: (value) {
+              if (mounted) setState(() => _cameraLensDirection = value);
+            },
           ),
           Positioned(
-            top: 0,
-            left: 0,
+            top: screenSize.height * 0.05,
+            left: screenSize.width * 0.05,
             child: Opacity(
-              opacity: _boxOpacity.clamp(0.0, 1.0), // Clamp opacity to ensure it is between 0 and 1
+              opacity: _boxOpacity.clamp(0.0, 1.0),
               child: Container(
-                width: 300,
-                height: 300,
+                width: imageSize,
+                height: imageSize,
                 decoration: BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage(_imagePaths[_currentImageIndex]), // 현재 이미지 경로 설정
-                    fit: BoxFit.cover, // 이미지가 상자에 맞게 조정됨
+                    image: AssetImage(_imagePaths[_currentImageIndex]),
+                    fit: BoxFit.contain,
+                  ),
+                  borderRadius: BorderRadius.circular(imageSize * 0.1),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 2,
                   ),
                 ),
               ),
             ),
           ),
           Positioned(
-            bottom: 50, // 슬라이더 위치 조정
-            left: 16,
-            right: 16,
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: Colors.green,
-                inactiveTrackColor: Colors.black,
-                thumbColor: Colors.white,
-                trackHeight: 32, // 슬라이더 바 두께 조정
-                overlayColor: Colors.green.withOpacity(1),
-              ),
-              child: Slider(
-                value: _recognizedTime.toDouble(),
-                max: maxTime.toDouble(), // 최대값은 2초
-                min: 0,
-                divisions: 20, // 구간 나누기
-                onChanged: (_) {}, // 사용자 입력 방지
-              ),
+            bottom: screenSize.height * 0.05,
+            left: (screenSize.width - sliderWidth) / 2,
+            width: sliderWidth,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _getStatusText(),
+                  style: TextStyle(
+                    color: _getStatusColor(),
+                    fontSize: screenSize.width * 0.04,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: screenSize.height * 0.02),
+                Container(
+                  width: sliderWidth,
+                  height: screenSize.height * 0.03,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(screenSize.height * 0.015),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(screenSize.height * 0.015),
+                    child: LinearProgressIndicator(
+                      value: _currentProgress / 100,
+                      backgroundColor: Colors.black45,
+                      valueColor: AlwaysStoppedAnimation<Color>(_getStatusColor()),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          Center(
-          child: Text(_text ?? '', style: TextStyle(color: flag == 0? Colors.white : Colors.greenAccent, fontSize: 32)),
-        ),
         ],
       ),
     );
+  }
+
+  String _getStatusText() {
+    if (_eatingCount >= 4) {
+      return "완료!";
+    }
+    return "${_eatingCount}번 먹었어요! (${4 - _eatingCount}번 남음)";
+  }
+
+  Color _getStatusColor() {
+    if (flag == 1) {
+      return Colors.greenAccent;
+    }
+    return _eatingCount >= 4 ? Colors.purple : Colors.white;
   }
 
   Future<void> _processImage(InputImage inputImage) async {
@@ -191,7 +238,6 @@ class _FaceDetectorViewState extends State<EatDetectorView> {
 
     _isBusy = false;
   }
-
 
   void _startImageChange() {
     _imageChangeTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {

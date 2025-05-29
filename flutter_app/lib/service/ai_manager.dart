@@ -2,11 +2,14 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 
 class AiManager {
   
+  // 먹기인식 모델 초기화
   late Interpreter _interpreter;
   late IsolateInterpreter isolateInterpreter;
 
+  // 채소인식 모델 초기화
   late Interpreter _vegetableInterpreter;
   late IsolateInterpreter isolateVegetableInterpreter;
+
   Future<void> loadModel() async {
     try {
       _interpreter = await Interpreter.fromAsset(
