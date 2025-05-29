@@ -1,0 +1,61 @@
+name: flutter_app
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  flame : ^1.21.0
+  audioplayers: ^6.1.0
+  flame_audio: ^2.10.6
+  google_ml_kit: ^0.19.0
+  google_mlkit_face_detection: ^0.12.0
+  flutter_pdfview: ^1.3.3
+  image_picker: ^1.1.2
+  camera: ^0.10.6
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  google_mlkit_commons: ^0.9.0
+  crop: ^0.5.5
+  tflite_flutter: ^0.11.0
+  image: ^4.4.0
+  ffi: ^2.1.3
+  google_fonts: ^6.1.0
+  flutter_animate: ^4.5.0
+  shared_preferences: ^2.3.0
+  firebase_core: ^3.4.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.4.0
+  flutter_login: ^5.0.0
+  table_calendar: ^3.0.9
+  intl: ^0.19.0 
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  assets:
+    - assets/images/
+    - assets/images/heros/
+    - assets/images/enemies/
+    - assets/images/projectiles/
+    - assets/images/ui/
+    - assets/images/screen/
+    - assets/audio/
+    - assets/MobileNetV2(200).tflite
+    - assets/vege.tflite
+    - assets/vege3.tflite
