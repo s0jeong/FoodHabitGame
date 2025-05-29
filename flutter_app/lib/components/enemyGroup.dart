@@ -141,15 +141,7 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
 
     // 보스 페이즈 2 진입 조건 수정
     if (isBoss && !isPhase2 && hp <= (500 * 0.3)) { // 70% 체력에서 페이즈 2 진입
-      isPhase2 = true;
-      isPhase2Entered = true;
-      gameRef.gameWorld.enemyHealthBar.mainColor = Colors.orange;
-      print('Boss entered Phase 2!');
-      
-      // 야채 인식 카메라 표시
-      Future.delayed(Duration(milliseconds: 500), () {
-        gameRef.showVegetableCameraOverlay();
-      });
+      enterPhase2();
       return;
     }
 
@@ -160,10 +152,8 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
 
     hp -= damage;
     hp = max(0, hp);
-    gameRef.gameWorld.enemyHealthBar.setValue(hp / maxHp); // 체력바 갱신
+    gameRef.gameWorld.enemyHealthBar.setValue(hp / maxHp);
     
-    print('EnemyGroup took $damage damage. HP: $hp');
-
     if (hp <= 0) {
       for (var enemy in enemies) {
         enemy.die();
@@ -174,6 +164,76 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
         gameRef.gameWorld.checkEnemyGroupStatus(); 
         removeFromParent();
       });
+    }
+  }
+
+  void enterPhase2() {
+    isPhase2 = true;
+    isPhase2Entered = true;
+    
+    // 보스 변신 효과
+    for (var enemy in enemies) {
+      if (enemy.isBoss) {
+        enemy.add(
+          SequenceEffect([
+            ScaleEffect.to(
+              Vector2.all(1.5),
+              EffectController(duration: 0.5),
+            ),
+            ColorEffect(
+              Colors.red,
+              EffectController(duration: 0.3, reverseDuration: 0.3),
+            ),
+            ScaleEffect.to(
+              Vector2.all(1.2),
+              EffectController(duration: 0.5),
+            ),
+          ]),
+        );
+      }
+    }
+
+    // 체력바 색상 변경
+    gameRef.gameWorld.enemyHealthBar.mainColor = Colors.orange;
+    
+    // 배경 어둡게
+    _darkenBackground();
+    
+    // 야채 인식 카메라 표시
+    Future.delayed(Duration(milliseconds: 500), () {
+      gameRef.showPhase2CameraOverlay();
+    });
+  }
+
+  void processPhase2EatingDetection(bool isValidEating) {
+    if (!isPhase2 || !isBoss) return;
+    
+    if (isValidEating) {
+      // 보스에게 데미지
+      hp -= 100;  // 페이즈 2에서는 먹기 성공시 더 큰 데미지
+      hp = max(0, hp);
+      gameRef.gameWorld.enemyHealthBar.setValue(hp / maxHp);
+
+      // 보스 피격 효과
+      for (var enemy in enemies) {
+        if (enemy.isBoss) {
+          enemy.takeDamage();
+          enemy.addExplosionEffect();
+        }
+      }
+
+      // 보스 처치 확인
+      if (hp <= 0) {
+        for (var enemy in enemies) {
+          enemy.die();
+          enemy.addExplosionEffect();
+        }
+
+        Future.delayed(Duration(seconds: 1), () {
+          gameRef.gameWorld.checkEnemyGroupStatus();
+          removeFromParent();
+        });
+      }
     }
   }
 

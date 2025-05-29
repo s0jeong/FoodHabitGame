@@ -17,6 +17,7 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 import 'package:flutter_app/components/projectile.dart';
 import 'package:flutter_app/game_ui/eat_detector_view.dart';
+import 'package:flutter_app/game_ui/phase2_detector_view.dart';
 
 
 // 주요 게임 클래스
@@ -209,6 +210,18 @@ class BattleGame extends FlameGame {
       ),
     );
 
+    // Phase2DetectorView 오버레이 등록
+    overlays.addEntry(
+      'phase2_camera_view',
+      (context, game) => Phase2DetectorView(
+        game: game as BattleGame,
+        onFinished: () {
+          hidePhase2CameraOverlay();
+          isGamePaused = false;
+        },
+      ),
+    );
+
     overlays.add('PauseButton');
     overlays.add('TimerOverlay');
   }
@@ -379,6 +392,20 @@ class BattleGame extends FlameGame {
     int minutes = elapsedSeconds ~/ 60;
     int seconds = elapsedSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  void showPhase2CameraOverlay() {
+    if (!overlays.isActive('phase2_camera_view')) {
+      overlays.add('phase2_camera_view');
+      isGamePaused = true;
+    }
+  }
+
+  void hidePhase2CameraOverlay() {
+    if (overlays.isActive('phase2_camera_view')) {
+      overlays.remove('phase2_camera_view');
+      isGamePaused = false;
+    }
   }
 }
 
