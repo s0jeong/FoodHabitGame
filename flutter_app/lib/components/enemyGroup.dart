@@ -153,7 +153,7 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
     hp -= damage;
     hp = max(0, hp);
     gameRef.gameWorld.enemyHealthBar.setValue(hp / maxHp);
-    
+
     if (hp <= 0) {
       for (var enemy in enemies) {
         enemy.die();
@@ -213,6 +213,9 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
       hp -= 100;  // 페이즈 2에서는 먹기 성공시 더 큰 데미지
       hp = max(0, hp);
       gameRef.gameWorld.enemyHealthBar.setValue(hp / maxHp);
+
+      // 야채 하나 제거
+      gameRef.gameWorld.removeVegetable();
 
       // 보스 피격 효과
       for (var enemy in enemies) {

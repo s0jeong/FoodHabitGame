@@ -85,6 +85,7 @@ class _Phase2DetectorViewState extends State<Phase2DetectorView> {
           _resetDetection();
           _currentProgress = min((_currentProgress + 25.0), 100.0);
           if (_currentProgress >= 100.0) {
+            widget.game.gameWorld.restoreEnergy(widget.game.gameWorld.maxHeroEnergy);
             widget.onFinished();
           }
         }
@@ -136,6 +137,8 @@ class _Phase2DetectorViewState extends State<Phase2DetectorView> {
                       widget.game.gameWorld.enemyGroup?.processPhase2EatingDetection(true);
                       
                       if (_currentProgress >= 100.0) {
+                        // 개발용 패스 버튼으로도 에너지 게이지 최대로 충전
+                        widget.game.gameWorld.restoreEnergy(widget.game.gameWorld.maxHeroEnergy);
                         widget.onFinished();
                       }
                     });

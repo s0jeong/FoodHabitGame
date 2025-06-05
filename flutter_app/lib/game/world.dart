@@ -239,18 +239,39 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
       enemyGroup = null;
       nextStage();
       goldBar.setValue(gameRef.gold / heroGoldCost);
+      
+      // 영웅 추가 가능 여부 확인 및 UI 표시
+      if (canAddHero()) {
+        showHeroAdditionDialog();
+      }
     }
+  }
+
+  // 영웅 추가 가능 여부 체크
+  bool canAddHero() {
+    return heroes.length < maxHeroes && gameRef.gold >= heroGoldCost;
+  }
+
+  // 영웅 추가 시도
+  bool tryAddHero() {
+    if (canAddHero()) {
+      gameRef.gold -= heroGoldCost;
+      goldBar.setValue(gameRef.gold / heroGoldCost);
+      gameRef.showHeroSelectionOverlay();
+      return true;
+    }
+    return false;
+  }
+
+  // 영웅 추가 다이얼로그 표시
+  void showHeroAdditionDialog() {
+    gameRef.overlays.add('HeroAdditionDialog');
   }
 
   void nextStage() {
     gameRef.level++;
     gameRef.gold += 10;
     spawnEnemies();
-
-    if (gameRef.gold >= heroGoldCost && heroes.length < maxHeroes) {
-      gameRef.gold -= heroGoldCost;
-      gameRef.showHeroSelectionOverlay();
-    }
   }
 
   void spawnUltraProjectile() {

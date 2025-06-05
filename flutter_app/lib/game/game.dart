@@ -18,6 +18,7 @@ import 'dart:async';
 import 'package:flutter_app/components/projectile.dart';
 import 'package:flutter_app/game_ui/eat_detector_view.dart';
 import 'package:flutter_app/game_ui/phase2_detector_view.dart';
+import 'package:flutter_app/game_ui/hero_addition_dialog.dart';
 
 
 // 주요 게임 클래스
@@ -220,6 +221,11 @@ class BattleGame extends FlameGame {
           isGamePaused = false;
         },
       ),
+    );
+
+    overlays.addEntry(
+      'HeroAdditionDialog',
+      (context, game) => HeroAdditionDialog(game: game as BattleGame),
     );
 
     overlays.add('PauseButton');
