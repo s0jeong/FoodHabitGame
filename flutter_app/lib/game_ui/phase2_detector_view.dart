@@ -45,7 +45,7 @@ class _Phase2DetectorViewState extends State<Phase2DetectorView> {
   late Phase2Detector _detector;
   bool _isEating = false;
   bool _hasVegetable = false;
-  String _statusMessage = "야채를 들어올려주세요";
+  String _statusMessage = " ";
   double _currentProgress = 0.0;
   Map<String, dynamic>? _lastMouthBoundingBox;
   Map<String, dynamic>? _lastVegetableBoundingBox;
@@ -83,7 +83,7 @@ class _Phase2DetectorViewState extends State<Phase2DetectorView> {
         if (success) {
           widget.game.gameWorld.enemyGroup?.processPhase2EatingDetection(true);
           _resetDetection();
-          _currentProgress = min((_currentProgress + 25.0), 100.0);
+          _currentProgress = min((_currentProgress + 50.0), 100.0);
           if (_currentProgress >= 100.0) {
             widget.game.gameWorld.restoreEnergy(widget.game.gameWorld.maxHeroEnergy);
             widget.onFinished();
@@ -132,34 +132,25 @@ class _Phase2DetectorViewState extends State<Phase2DetectorView> {
                 ElevatedButton(
                   onPressed: () {
                     // 임시로 한 번의 프로세스 완료로 처리
-                    setState(() {
-                      _currentProgress = min((_currentProgress + 25.0), 100.0);
-                      widget.game.gameWorld.enemyGroup?.processPhase2EatingDetection(true);
-                      
-                      if (_currentProgress >= 100.0) {
-                        // 개발용 패스 버튼으로도 에너지 게이지 최대로 충전
-                        widget.game.gameWorld.restoreEnergy(widget.game.gameWorld.maxHeroEnergy);
-                        widget.onFinished();
-                      }
-                    });
+                    _currentProgress = min((_currentProgress + 50.0), 100.0);
+                    widget.game.gameWorld.enemyGroup?.processPhase2EatingDetection(true);
+                    
+                    if (_currentProgress >= 100.0) {
+                      // 개발용 패스 버튼으로도 에너지 게이지 최대로 충전
+                      widget.game.gameWorld.restoreEnergy(widget.game.gameWorld.maxHeroEnergy);
+                      widget.onFinished();
+                    }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.withOpacity(0.8),
+                    backgroundColor: Colors.transparent,
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    elevation: 0,  // 음영 제거
+                    shadowColor: Colors.transparent,  // 그림자 색상 투명
+                    surfaceTintColor: Colors.transparent,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.fast_forward, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text(
-                        'Dev Pass',
-                        style: GoogleFonts.jua(
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+                    
                   ),
                 ),
                 SizedBox(width: 10),
@@ -195,17 +186,22 @@ class _Phase2DetectorViewState extends State<Phase2DetectorView> {
             ),
           ),
 
-          // 상태 표시등
+          // 상태 메시지
           Positioned(
-            top: screenSize.height * 0.05,
-            right: screenSize.width * 0.05,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _buildStatusIndicator("먹기", _isEating),
-                SizedBox(height: 10),
-                _buildStatusIndicator("야채", _hasVegetable),
-              ],
+            bottom: screenSize.height * 0.1,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                color: Colors.transparent,
+                child: Text(
+                  "야채를 먹어주세요",
+                  style: GoogleFonts.jua(
+                    fontSize: 24,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ),
           ),
 
@@ -220,14 +216,14 @@ class _Phase2DetectorViewState extends State<Phase2DetectorView> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.transparent,
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: Text(
                     _statusMessage,
                     style: GoogleFonts.jua(
                       fontSize: 24,
-                      color: Colors.black,
+                      color: Colors.white,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -239,7 +235,7 @@ class _Phase2DetectorViewState extends State<Phase2DetectorView> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(screenSize.height * 0.015),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.transparent,
                       width: 2,
                     ),
                   ),
@@ -388,15 +384,15 @@ class _Phase2DetectorViewState extends State<Phase2DetectorView> {
       _isEating = result.isEating;
       _hasVegetable = result.hasVegetable;
       
-      if (!result.isEating && !result.hasVegetable) {
-        _statusMessage = "야채를 들어올려주세요";
-      } else if (!result.isEating && result.hasVegetable) {
-        _statusMessage = "야채를 입 쪽으로 가져가주세요";
-      } else if (result.isEating && result.hasVegetable && result.isValidEatingPosition) {
-        _statusMessage = "이제 야채를 먹어주세요";
-      } else if (result.isEating && !result.hasVegetable) {
-        _statusMessage = "잘했어요! 계속 씹어주세요";
-      }
+      // if (!result.isEating && !result.hasVegetable) {
+      //   _statusMessage = "야채를 들어올려주세요";
+      // } else if (!result.isEating && result.hasVegetable) {
+      //   _statusMessage = "야채를 입 쪽으로 가져가주세요";
+      // } else if (result.isEating && result.hasVegetable && result.isValidEatingPosition) {
+      //   _statusMessage = "이제 야채를 먹어주세요";
+      // } else if (result.isEating && !result.hasVegetable) {
+      //   _statusMessage = "잘했어요! 계속 씹어주세요";
+      // }
     });
   }
 
