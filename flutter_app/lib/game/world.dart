@@ -12,13 +12,15 @@ import 'package:flutter_app/screens/preferences.dart'; // Preferences 임포트
 class GameWorld extends Component with HasGameRef<BattleGame> {
   List<customhero.Hero> heroes = [];
   EnemyGroup? enemyGroup;
-  final double groundYPos = 300; // 캐릭터들의 위치할 높이
-  final double heroSpacing = 50; // 캐릭터 간 최소 간격 증가
+  late double groundYPos; // 동적으로 계산될 캐릭터들의 위치 높이
+  late double heroSpacing; // 동적으로 계산될 캐릭터 간 간격
+  late double gaugeHeight; // 게이지 바 높이
   final int maxHeroes = 4;
   final int heroGoldCost = 100;
 
   double heroEnergy = 100;
   final double maxHeroEnergy = 100;
+  bool isEnergyDepleted = false;
 
   // 채소 개수 및 UI 관리
   int broccoliCount = 0;
@@ -26,14 +28,40 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
 
   void useHeroEnergy(double amount) {
     if (heroEnergy <= 0) {
+      if (!isEnergyDepleted) {
+        isEnergyDepleted = true;
+        // 보스전이고, 보스의 체력이 임계치에 가까운 경우 먹기 인식을 시작하지 않음
+        if (enemyGroup?.isBoss == true && 
+            !enemyGroup!.isPhase2 && 
+            enemyGroup!.hp <= (500 * 0.35)) { // 35%로 여유를 둠
+          // 먹기 인식 시작하지 않고 에너지만 고갈 상태로 표시
+          return;
+        }
+        gameRef.showEatCameraOverlay();
+      }
       return;
     }
     heroEnergy -= amount;
     heroEnergy = heroEnergy.clamp(0, maxHeroEnergy);
     heroEnergyBar.setValue(heroEnergy / maxHeroEnergy);
+    
     if (heroEnergy <= 0) {
-      heroEnergy = maxHeroEnergy;
+      isEnergyDepleted = true;
+      // 보스전이고, 보스의 체력이 임계치에 가까운 경우 먹기 인식을 시작하지 않음
+      if (enemyGroup?.isBoss == true && 
+          !enemyGroup!.isPhase2 && 
+          enemyGroup!.hp <= (500 * 0.35)) { // 35%로 여유를 둠
+        // 먹기 인식 시작하지 않고 에너지만 고갈 상태로 표시
+        return;
+      }
+      gameRef.showEatCameraOverlay();
     }
+  }
+
+  void restoreEnergy(double amount) {
+    heroEnergy = (heroEnergy + amount).clamp(0, maxHeroEnergy);
+    heroEnergyBar.setValue(heroEnergy / maxHeroEnergy);
+    isEnergyDepleted = false;
   }
 
   late GaugeBar enemyHealthBar;
@@ -63,13 +91,21 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
   }
 
   void spawnUI() async {
+    final screenWidth = gameRef.size.x;
+    final screenHeight = gameRef.size.y;
+    
+    // 게이지 바 크기 계산
+    final gaugeWidth = screenWidth * 0.25;
+    gaugeHeight = screenHeight * 0.04;
+    final topPadding = screenHeight * 0.05; // 화면 상단에서 15% 위치로 수정 (기존 5%에서 변경)
+
     enemyHealthBar = GaugeBar(
       direction: GaugeDirection.rightToLeft,
       mainColor: Colors.red,
       backgroundColor: const Color.fromARGB(0, 0, 0, 0),
       decreaseMarginColor: Colors.yellow,
-      position: Vector2(gameRef.size.x - 256, 40),
-      size: Vector2(200, 30),
+      position: Vector2(screenWidth - gaugeWidth - 32, topPadding),
+      size: Vector2(gaugeWidth, gaugeHeight),
     );
     add(enemyHealthBar);
 
@@ -78,8 +114,8 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
       direction: GaugeDirection.leftToRight,
       mainColor: Colors.lightGreenAccent,
       backgroundColor: const Color.fromARGB(0, 0, 0, 0),
-      position: Vector2(32, 40),
-      size: Vector2(200, 30),
+      position: Vector2(32, topPadding),
+      size: Vector2(gaugeWidth, gaugeHeight),
     );
     add(heroEnergyBar);
 
@@ -88,36 +124,40 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
       direction: GaugeDirection.leftToRight,
       mainColor: Colors.yellow,
       backgroundColor: const Color.fromARGB(0, 0, 0, 0),
-      position: Vector2(gameRef.size.x / 2 - 150, 40),
-      size: Vector2(300, 20),
+      position: Vector2(screenWidth / 2 - gaugeWidth * 0.6, topPadding),
+      size: Vector2(gaugeWidth * 1.2, gaugeHeight * 0.8),
     );
     add(goldBar);
     goldBar.setValue(gameRef.gold.toDouble());
 
-    enemyHealthBar.setPosition(AlignType.right, gameRef.size.x);
-    heroEnergyBar.setPosition(AlignType.left, gameRef.size.x);
-    goldBar.setPosition(AlignType.center, gameRef.size.x);
+    // 게이지 바 위치 조정
+    enemyHealthBar.setPosition(AlignType.right, screenWidth);
+    heroEnergyBar.setPosition(AlignType.left, screenWidth);
+    goldBar.setPosition(AlignType.center, screenWidth);
 
-    // 채소 이미지 추가
+    // 캐릭터 위치 및 간격 계산
+    groundYPos = screenHeight * 0.85; // 화면 높이의 85% 위치에 캐릭터 배치 (기존 70%에서 수정)
+    heroSpacing = screenWidth * 0.06;
+
     await spawnVegetables();
   }
 
   Future<void> spawnVegetables() async {
-    // 기존 채소 이미지 제거 (중복 방지)
     for (var sprite in vegetableSprites) {
       remove(sprite);
     }
     vegetableSprites.clear();
 
-    // 채소 이미지를 게이지 바 아래로 배치
-    const double vegetableSize = 40; // 채소 이미지 크기
-    const double spacing = 5; // 채소 간 간격
-    const double gaugeBarBottomPadding = 10; // 게이지 바 아래 여유 공간
-    const double vegetablesStartXPadding = 20; // 화면 오른쪽에서 떨어진 간격
+    final screenWidth = gameRef.size.x;
+    final screenHeight = gameRef.size.y;
+    
+    final vegetableSize = screenWidth * 0.05;
+    final spacing = vegetableSize * 0.2;
+    final gaugeBarBottomPadding = screenHeight * 0.02;
+    final vegetablesStartXPadding = screenWidth * 0.02;
 
-    // 위치 계산
-    double startX = gameRef.size.x - broccoliCount * (vegetableSize + spacing) - vegetablesStartXPadding;
-    double yPos = 40 + 30 + gaugeBarBottomPadding; // 게이지 바의 y 위치 + 높이 + 여유 공간
+    double startX = screenWidth - broccoliCount * (vegetableSize + spacing) - vegetablesStartXPadding;
+    double yPos = screenHeight * 0.15 + gaugeHeight + gaugeBarBottomPadding; // 게이지 바 위치에 맞춰 조정
 
     for (int i = 0; i < broccoliCount; i++) {
       final sprite = SpriteComponent(
@@ -186,45 +226,55 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
   }
 
   Vector2 spawnPosition() {
-    const double xStart = 100; // 시작 x 위치
-    const double xIncrement = 150; // x 위치 증가 단위 증가
-    double newX = xStart;
-    bool positionFound = false;
-
-    while (!positionFound) {
-      positionFound = true;
-      for (var hero in heroes) {
-        if ((hero.position.x - newX).abs() < heroSpacing) {
-          positionFound = false;
-          newX += xIncrement;
-          break;
-        }
-      }
-    }
-    return Vector2(newX, groundYPos);
+    final xPos = heroSpacing + heroes.length * (heroSpacing * 2);
+    return Vector2(xPos, groundYPos);
   }
 
   void checkEnemyGroupStatus() {
     if (enemyGroup != null && enemyGroup!.hp <= 0) {
       if (enemyGroup!.isBoss) {
         gameRef.gold += 50;
+        // 보스 처치 시 게임 클리어 알림창 표시
+        gameRef.overlays.add('GameClearOverlay');
+        gameRef.isGamePaused = true;
       }
       remove(enemyGroup!);
       enemyGroup = null;
       nextStage();
       goldBar.setValue(gameRef.gold / heroGoldCost);
+      
+      // 영웅 추가 가능 여부 확인 및 UI 표시
+      if (canAddHero()) {
+        showHeroAdditionDialog();
+      }
     }
+  }
+
+  // 영웅 추가 가능 여부 체크
+  bool canAddHero() {
+    return heroes.length < maxHeroes && gameRef.gold >= heroGoldCost;
+  }
+
+  // 영웅 추가 시도
+  bool tryAddHero() {
+    if (canAddHero()) {
+      gameRef.gold -= heroGoldCost;
+      goldBar.setValue(gameRef.gold / heroGoldCost);
+      gameRef.showHeroSelectionOverlay();
+      return true;
+    }
+    return false;
+  }
+
+  // 영웅 추가 다이얼로그 표시
+  void showHeroAdditionDialog() {
+    gameRef.overlays.add('HeroAdditionDialog');
   }
 
   void nextStage() {
     gameRef.level++;
     gameRef.gold += 10;
     spawnEnemies();
-
-    if (gameRef.gold >= heroGoldCost && heroes.length < maxHeroes) {
-      gameRef.gold -= heroGoldCost;
-      gameRef.showHeroSelectionOverlay();
-    }
   }
 
   void spawnUltraProjectile() {

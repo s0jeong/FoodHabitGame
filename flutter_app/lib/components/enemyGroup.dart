@@ -4,6 +4,7 @@ import 'package:flame/effects.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/components/enemy.dart';
 import 'package:flutter_app/game/game.dart';
+import 'dart:async';
 
 
 class EnemyGroup extends Component with HasGameRef<BattleGame> {
@@ -17,40 +18,44 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
   @override
   Future<void> onLoad() async {
     super.onLoad();
-    if (isBoss) {
+    // 나중에 사용할 수 있도록 주석 처리
+    /*if (isBoss) {
       _darkenBackground();
-    }
+    }*/
   }
 
+  // 나중에 사용할 수 있도록 함수는 유지
   void _darkenBackground() {
     final darkOverlay = RectangleComponent(
-      position: Vector2.zero(), // 화면 전체
-      size: gameRef.size, // 게임 화면 크기
-      paint: Paint()..color = Color(0x80000000), // 반투명 어두운 색
+      position: Vector2.zero(),
+      size: gameRef.size,
+      paint: Paint()..color = Color(0x80000000),
     );
-    add(darkOverlay); // 덮개 추가
+    add(darkOverlay);
   }
 
   void spawnEnemies() {
-    //2초 뒤 isMoving을 false로 설정
-    Future.delayed(Duration(seconds: 2), () {
-      isMoving = false;
-    });
-    
+    // 적군이 완전히 도착한 후에 isMoving을 false로 설정
     Future.delayed(Duration(seconds: 2), () {
       if (isBoss) {
         // 보스 등장
-        hp = 500; // 보스 체력 설정
-        
+        hp = 500;
         enemies = [];
 
         int rand = Random().nextInt(5);
-        var boss = Enemy(enemyID: rand, isBoss: true); // 보스는 단일 Enemy
-        double startX = gameRef.size.x + 100;
+        var boss = Enemy(enemyID: rand, isBoss: true);
+        
+        // 화면 크기에 따른 보스 위치 계산
+        double screenWidth = gameRef.size.x;
+        double screenHeight = gameRef.size.y;
+        double startX = screenWidth + (screenWidth * 0.1); // 화면 너비의 10% 만큼 오른쪽에서 시작
         boss.position = Vector2(startX, gameRef.gameWorld.groundYPos);
 
-        // 크기 효과와 나타나는 효과를 분리하여 순차적으로 적용
-        boss.add(ScaleEffect.to(Vector2.all(1.2), EffectController(duration: 1.0)));
+        // 크기 효과도 화면 크기에 맞게 조정
+        boss.add(ScaleEffect.to(
+          Vector2.all(1.2 * (screenWidth / 1000)), // 기준 화면 너비 1000px 기준으로 스케일 조정
+          EffectController(duration: 1.0)
+        ));
         
         Future.delayed(const Duration(seconds: 1), () {
           boss.add(OpacityEffect.to(1.0, EffectController(duration: 1.0)));
@@ -60,15 +65,16 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
         add(boss);
 
       } else {
+        // 일반 적군 생성
         for (int i = 0; i < 2; i++) {
           int rand = Random().nextInt(5);
           var enemy = Enemy(enemyID: rand);
 
-          double startX =
-              gameRef.size.x + 100 + (i * 300); // 첫 번째 적은 100, 두 번째 적은 300에 배치
+          double screenWidth = gameRef.size.x;
+          double spacing = screenWidth * 0.3; // 적군 간 간격을 화면 너비의 30%로 설정
+          double startX = screenWidth + (screenWidth * 0.1) + (i * spacing);
           enemy.position = Vector2(startX, gameRef.gameWorld.groundYPos);
 
-          // enemies.add(enemy);
           enemies.add(enemy);
           add(enemy);
 
@@ -77,43 +83,49 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
             OpacityEffect.to(1.0, EffectController(duration: 1.0)),
           );
 
-          // 흔들림 효과 추가
           addShakeEffect(enemy);
         }
       }
-      maxHp = hp; // 최대 체력 설정
+      maxHp = hp;
 
-      // 적이 화면으로 이동하는 애니메이션
+      // 적군 이동 위치 계산
+      double screenWidth = gameRef.size.x;
       for (int i = 0; i < enemies.length; i++) {
         var enemy = enemies[i];
-        double targetX = gameRef.size.x - (300 - (i * 150));
+        double targetX = screenWidth * (isBoss ? 0.7 : (0.7 - (i * 0.15))); // 보스는 화면의 70%, 일반 적군은 간격을 두고 배치
 
         enemy.add(
           MoveEffect.to(
             Vector2(targetX, gameRef.gameWorld.groundYPos),
-            EffectController(duration: 1),
+            EffectController(duration: 2.0), // 이동 시간을 2초로 늘림
+            onComplete: () {
+              // 마지막 적군이 도착했을 때만 isMoving을 false로 설정
+              if (i == enemies.length - 1) {
+                Future.delayed(Duration(milliseconds: 500), () {
+                  isMoving = false;
+                });
+              }
+            },
           ),
         );
 
-        // 흔들림 효과 추가
         addShakeEffect(enemy);
       }
     });
-    
-    
   }
 
-  // 흔들림 효과를 추가하는 메서드
   void addShakeEffect(Enemy enemy) {
-    // MoveByEffect를 반복적으로 적용하여 좌우로 흔들림 효과 구현
+    double screenHeight = gameRef.size.y;
+    double shakeAmount = screenHeight * 0.01; // 화면 높이의 1%만큼 흔들기
+
     final shakeEffect = SequenceEffect(
       [
         MoveByEffect(
-          Vector2(0, 10), // 오른쪽으로 10 이동
+          Vector2(0, shakeAmount),
           EffectController(duration: 0.2, alternate: true, repeatCount: 3),
         ),
         MoveByEffect(
-          Vector2(0, -10), // 왼쪽으로 10 이동
+          Vector2(0, -shakeAmount),
           EffectController(duration: 0.2, alternate: true, repeatCount: 3),
         ),
       ],
@@ -126,46 +138,105 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
     if (isMoving) {
       return;
     }
-    if (isBoss && isPhase2) {
-      // 페이즈 2에서는 일반 공격 무시
-      if (isBoss && isPhase2 && !isPhase2Entered) {
-        isPhase2Entered = true;
-        gameRef.gameWorld.enemyHealthBar.mainColor = Colors.orange;
 
-        Future.delayed(Duration(milliseconds: 200), () {
-          gameRef.showVegetableCameraOverlay();
-          //gameRef.gameWorld.spawnUltraProjectile();
-        });
-        
-      }
+    // 보스 페이즈 2 진입 조건 수정
+    if (isBoss && !isPhase2 && hp <= (500 * 0.3)) { // 70% 체력에서 페이즈 2 진입
+      enterPhase2();
       return;
-      
+    }
+
+    // 페이즈 2에서는 일반 공격 무시
+    if (isBoss && isPhase2) {
+      return;
     }
 
     hp -= damage;
     hp = max(0, hp);
-    gameRef.gameWorld.enemyHealthBar.setValue(hp / maxHp); // 체력바 갱신
-    
-    print('EnemyGroup took $damage damage. HP: $hp');
-
-    if (isBoss && !isPhase2 && hp <= (500 * 0.3)) {
-      // 보스가 체력 70% 소진 시 페이즈 2로 전환
-      isPhase2 = true;
-      print('Boss entered Phase 2!');
-    }
+    gameRef.gameWorld.enemyHealthBar.setValue(hp / maxHp);
 
     if (hp <= 0) {
       for (var enemy in enemies) {
-        enemy.die(); // 모든 적군의 죽음 애니메이션 실행
-        // 각 적에 대해 폭발 파티클 추가
-        enemy.addExplosionEffect(); // 폭발 파티클 추가
+        enemy.die();
+        enemy.addExplosionEffect();
       }
 
-      // 적군 애니메이션이 종료될 시간까지 대기 후 그룹 삭제
       Future.delayed(Duration(seconds: 1), () {
         gameRef.gameWorld.checkEnemyGroupStatus(); 
-        removeFromParent(); // 적군 그룹 삭제
+        removeFromParent();
       });
+    }
+  }
+
+  void enterPhase2() {
+    isPhase2 = true;
+    isPhase2Entered = true;
+    
+    // 보스 변신 효과
+    for (var enemy in enemies) {
+      if (enemy.isBoss) {
+        enemy.add(
+          SequenceEffect([
+            ScaleEffect.to(
+              Vector2.all(1.5),
+              EffectController(duration: 0.5),
+            ),
+            ColorEffect(
+              Colors.red,
+              EffectController(duration: 0.3, reverseDuration: 0.3),
+            ),
+            ScaleEffect.to(
+              Vector2.all(1.2),
+              EffectController(duration: 0.5),
+            ),
+          ]),
+        );
+      }
+    }
+
+    // 체력바 색상 변경
+    gameRef.gameWorld.enemyHealthBar.mainColor = Colors.orange;
+    
+    // 배경 어둡게
+    _darkenBackground();
+    
+    // 야채 인식 카메라 표시
+    Future.delayed(Duration(milliseconds: 500), () {
+      gameRef.showPhase2CameraOverlay();
+    });
+  }
+
+  void processPhase2EatingDetection(bool isValidEating) {
+    if (!isPhase2 || !isBoss) return;
+    
+    if (isValidEating) {
+      // 보스에게 데미지
+      hp -= 100;  // 페이즈 2에서는 먹기 성공시 더 큰 데미지
+      hp = max(0, hp);
+      gameRef.gameWorld.enemyHealthBar.setValue(hp / maxHp);
+
+      // 야채 하나 제거
+      gameRef.gameWorld.removeVegetable();
+
+      // 보스 피격 효과
+      for (var enemy in enemies) {
+        if (enemy.isBoss) {
+          enemy.takeDamage();
+          enemy.addExplosionEffect();
+        }
+      }
+
+      // 보스 처치 확인
+      if (hp <= 0) {
+        for (var enemy in enemies) {
+          enemy.die();
+          enemy.addExplosionEffect();
+        }
+
+        Future.delayed(Duration(seconds: 1), () {
+          gameRef.gameWorld.checkEnemyGroupStatus();
+          removeFromParent();
+        });
+      }
     }
   }
 
@@ -174,19 +245,36 @@ class EnemyGroup extends Component with HasGameRef<BattleGame> {
     if (isMoving) {
       return;
     }
-    hp = 0;
-    gameRef.gameWorld.enemyHealthBar.setValue(0); // 체력바 갱신
 
-    for (var enemy in enemies) {
-      enemy.die(); // 모든 적군의 죽음 애니메이션 실행
-      // 각 적에 대해 폭발 파티클 추가
-      enemy.addExplosionEffect(); // 폭발 파티클 추가
+    // 페이즈 2에서는 궁극기 데미지로 즉시 처치
+    if (isBoss && isPhase2) {
+      hp = 0;
+      gameRef.gameWorld.enemyHealthBar.setValue(0);
+      
+      for (var enemy in enemies) {
+        enemy.die();
+        enemy.addExplosionEffect();
+      }
+
+      Future.delayed(Duration(seconds: 1), () {
+        gameRef.gameWorld.checkEnemyGroupStatus();
+        removeFromParent();
+      });
+      return;
     }
 
-    // 적군 애니메이션이 종료될 시간까지 대기 후 그룹 삭제
+    // 일반 상황에서의 궁극기 데미지 처리
+    hp = 0;
+    gameRef.gameWorld.enemyHealthBar.setValue(0);
+
+    for (var enemy in enemies) {
+      enemy.die();
+      enemy.addExplosionEffect();
+    }
+
     Future.delayed(Duration(seconds: 1), () {
       gameRef.gameWorld.checkEnemyGroupStatus();
-      removeFromParent(); // 적군 그룹 삭제
+      removeFromParent();
     });
   }
 }
