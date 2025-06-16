@@ -234,6 +234,9 @@ class GameWorld extends Component with HasGameRef<BattleGame> {
     if (enemyGroup != null && enemyGroup!.hp <= 0) {
       if (enemyGroup!.isBoss) {
         gameRef.gold += 50;
+        // 보스 처치 시 게임 클리어 알림창 표시
+        gameRef.overlays.add('GameClearOverlay');
+        gameRef.isGamePaused = true;
       }
       remove(enemyGroup!);
       enemyGroup = null;

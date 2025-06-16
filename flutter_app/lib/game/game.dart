@@ -228,6 +228,12 @@ class BattleGame extends FlameGame {
       (context, game) => HeroAdditionDialog(game: game as BattleGame),
     );
 
+    // 게임 클리어 오버레이 추가
+    overlays.addEntry(
+      'GameClearOverlay',
+      (context, game) => GameClearOverlay(game: game as BattleGame),
+    );
+
     overlays.add('PauseButton');
     overlays.add('TimerOverlay');
   }
@@ -630,6 +636,90 @@ class GameEndOverlay extends StatelessWidget {
                 '날짜: $formattedDate',
                 style: GoogleFonts.jua(fontSize: 20, color: Colors.black),
               ),
+              Text(
+                '플레이 시간: ${game.getFormattedTime()}',
+                style: GoogleFonts.jua(fontSize: 20, color: Colors.black),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  game.exitGame(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFFF80AB),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text(
+                  '메인 화면으로',
+                  style: GoogleFonts.jua(fontSize: 20, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 0.5.seconds);
+  }
+}
+
+// 게임 클리어 오버레이
+class GameClearOverlay extends StatelessWidget {
+  final BattleGame game;
+
+  const GameClearOverlay({super.key, required this.game});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFFFC1CC), Color(0xFFE6E6FA)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                offset: Offset(0, 4),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/screen/Heartsping.png',
+                width: 80,
+                height: 80,
+              ).animate().shimmer(duration: 2.seconds),
+              const SizedBox(height: 10),
+              Text(
+                '축하합니다!',
+                style: GoogleFonts.jua(
+                  fontSize: 32,
+                  color: Color(0xFFFF4081),
+                  shadows: [Shadow(color: Colors.white, blurRadius: 2)],
+                ),
+              ),
+              Text(
+                '보스를 처치했습니다!',
+                style: GoogleFonts.jua(
+                  fontSize: 24,
+                  color: Color(0xFFFF4081),
+                  shadows: [Shadow(color: Colors.white, blurRadius: 2)],
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
                 '플레이 시간: ${game.getFormattedTime()}',
                 style: GoogleFonts.jua(fontSize: 20, color: Colors.black),

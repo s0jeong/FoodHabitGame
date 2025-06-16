@@ -56,6 +56,11 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final buttonWidth = screenSize.width * 0.15; // 화면 너비의 20%로 감소 (기존 25%에서 감소)
+    final buttonHeight = screenSize.height * 0.07; // 화면 높이의 5%로 감소 (기존 6%에서 감소)
+    final buttonSpacing = screenSize.width * 0.02; // 화면 너비의 2%로 감소 (기존 3%에서 감소)
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -104,8 +109,8 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                               scale: _hachupingAnimation.value,
                               child: Image.asset(
                                 'assets/images/screen/Heartsping.png',
-                                width: 400,
-                                height: 400,
+                                width: screenSize.width * 0.35, // 화면 너비의 35%로 감소 (기존 40%에서 감소)
+                                height: screenSize.width * 0.35, // 화면 너비의 35%로 감소 (기존 40%에서 감소)
                               ).animate().shimmer(duration: 2.seconds),
                             ),
                           ),
@@ -118,12 +123,15 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                   flex: 1,
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(right: 100.0), // 왼쪽으로 이동 (오른쪽 여백 추가)
+                      padding: EdgeInsets.only(right: screenSize.width * 0.05),
                       child: ClipPath(
                         clipper: SpeechBubbleClipper(),
                         child: Container(
-                          width: 700, // 말풍선 너비 증가 (기존 암묵적 크기보다 큼)
-                          padding: const EdgeInsets.fromLTRB(50, 30, 30, 30), // 패딩 증가
+                          width: screenSize.width * 0.75, // 화면 너비의 75%로 감소 (기존 80%에서 감소)
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenSize.width * 0.04,
+                            vertical: screenSize.height * 0.02,
+                          ),
                           decoration: const BoxDecoration(
                             color: Colors.transparent,
                             boxShadow: [
@@ -139,7 +147,7 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               _buildTitleText(),
-                              SizedBox(height: spacing),
+                              SizedBox(height: screenSize.height * 0.02),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -154,9 +162,10 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                                         ),
                                       );
                                     },
+                                    width: buttonWidth,
+                                    height: buttonHeight,
                                   ),
-                                  SizedBox(width: 20),
-                                  // main_menu.dart (수정 부분)
+                                  SizedBox(width: buttonSpacing),
                                   _buildButton(
                                     text: '환경 설정',
                                     colors: [Color(0xFFE6E6FA), Color(0xFFB3E5FC)],
@@ -166,6 +175,8 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                                       await Preferences.showSettingsDialog(context);
                                       print('환경 설정 다이얼로그 닫힘');
                                     },
+                                    width: buttonWidth,
+                                    height: buttonHeight,
                                   ),
                                 ],
                               ),
@@ -241,6 +252,8 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
     required List<Color> colors,
     required VoidCallback onTap,
     required AnimationController controller,
+    required double width,
+    required double height,
   }) {
     return GestureDetector(
       onTapDown: (_) {
@@ -262,14 +275,15 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
               return Transform.scale(
                 scale: controller.isAnimating ? 1.05 : 1.0,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                  width: width,
+                  height: height,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: colors,
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(height * 0.2), // 버튼 높이의 20%
                     boxShadow: const [
                       BoxShadow(
                         color: Colors.white,
@@ -278,25 +292,34 @@ class _MainMenuState extends State<MainMenu> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  child: Text(
-                    text,
-                    style: GoogleFonts.jua(
-                      fontSize: buttonFontSize,
-                      color: Colors.black, // 글씨 색상 흰색 -> 검은색
-                      shadows: const [
-                        Shadow(
-                          color: Colors.black54,
-                          offset: Offset(1, 1),
-                          blurRadius: 1,
-                        ),
-                      ],
+                  child: Center(
+                    child: Text(
+                      text,
+                      style: GoogleFonts.jua(
+                        fontSize: height * 0.4, // 버튼 높이의 40%
+                        color: Colors.black,
+                        shadows: const [
+                          Shadow(
+                            color: Colors.black54,
+                            offset: Offset(1, 1),
+                            blurRadius: 1,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               );
             },
           ),
-          Positioned(top: -5, right: -5, child: _buildSmallHeart()),
+          Positioned(
+            top: -height * 0.1,
+            right: -height * 0.1,
+            child: Transform.scale(
+              scale: height * 0.001, // 버튼 높이에 비례하여 하트 크기 조정
+              child: _buildSmallHeart(),
+            ),
+          ),
         ],
       ),
     );
