@@ -46,7 +46,7 @@
 - **Firebase Analytics**: 사용자 행동 분석
 
 ### AI/ML
-- **YOLO v5**: 실시간 객체 탐지 (채소 인식)
+- **YOLO v11**: 실시간 객체 탐지 (채소 인식)
 - **MobileNetV2**: 경량화된 이미지 분류 (먹기 인식)
 - **Google ML Kit**: 얼굴 감지 및 특징점 추출
 - **TensorFlow Lite**: 모바일 AI 모델 최적화
